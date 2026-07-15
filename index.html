@@ -250,15 +250,12 @@
 </head>
 <body>
 
-    <!-- INTERFACE APPLICATIVE GENERALE (HORS ARENE) -->
     <div id="nonBattleInterface" class="container py-3">
-        <!-- HEADER GENERAL -->
         <div id="headerBar" class="d-flex justify-content-between align-items-center mb-3 d-none">
             <div><h2 class="brawl-font text-warning mb-0" id="displayUsername">JOUEUR</h2></div>
             <button onclick="retourLobby()" class="btn brawl-btn btn-pink px-4 py-2">⬅ QUITTER</button>
         </div>
 
-        <!-- ÉCRAN CONNEXION -->
         <div id="loginPage" class="login-container p-5 text-center">
             <h1 class="brawl-font text-info mb-4" style="font-size: 3rem;">ARÈNE BOT</h1>
             <div class="mb-4 text-start">
@@ -268,7 +265,6 @@
             <button onclick="handleLogin()" class="btn brawl-btn btn-yellow w-100 py-3">SE CONNECTER</button>
         </div>
 
-        <!-- LOBBY HORS-LIGNE -->
         <div id="lobbyPhase" class="brawl-card p-4 mb-4 text-center d-none">
             <h3 class="brawl-font text-info mb-3">ENTRAINEMENT HORS-LIGNE</h3>
             <div class="mb-3 mx-auto" style="max-width: 400px;">
@@ -277,7 +273,6 @@
             </div>
         </div>
 
-        <!-- SÉLECTION CARTES -->
         <div id="setupPhase" class="brawl-card p-4 mb-4 d-none">
             <h3 class="brawl-font text-center text-warning mb-3" id="setupTitle">CHOISIS TES 3 POKÉMONS DE COMBAT</h3>
             <div id="selectionGrid" class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3 mb-4 justify-content-center"></div>
@@ -285,15 +280,12 @@
         </div>
     </div>
 
-    <!-- ARÈNE DE COMBAT EMPILÉE (100VH RECOUVRE TOUT) -->
     <div id="battlePhase" class="d-none">
         
-        <!-- BANDEAU ANIMÉ FLOATING NOTIFICATION TOUR -->
         <div id="brawlTurnBanner" class="brawl-banner-container">
             <div id="brawlBannerText" class="brawl-banner-text">À TON TOUR ! 🔥</div>
         </div>
 
-        <!-- 1. CÔTÉ BOT (HAUT) -->
         <div class="zone-adversaire" id="enemyFighterCardNode">
             <h5 class="brawl-font text-danger mb-1" id="battleEnemyName">BOT ROBOT</h5>
             <div class="hp-bar-container"><div id="enemyHpBar" class="hp-bar-fill"></div><div id="enemyHpText" class="hp-text">25 / 25 PV</div></div>
@@ -301,10 +293,8 @@
             <div id="enemyMiniDeck" class="d-flex justify-content-center mt-1"></div>
         </div>
         
-        <!-- LOG DES ÉVÉNEMENTS INTERMÉDIAIRE -->
         <div class="log-box text-warning" id="combatLog">Le match va débuter...</div>
         
-        <!-- 2. CÔTÉ MOI (MILIEU) -->
         <div class="zone-moi" id="myFighterCardNode">
             <div class="hp-bar-container"><div id="playerHpBar" class="hp-bar-fill"></div><div id="playerHpText" class="hp-text">25 / 25 PV</div></div>
             <div class="pokemon-card-wrapper" id="myCardAnchor"><img id="playerFighterImg" src="" class="pokemon-card-img"></div>
@@ -312,14 +302,12 @@
             <h5 class="brawl-font text-success mt-1 mb-0" id="battlePlayerName">MOI</h5>
         </div>
         
-        <!-- 3. CONTROLES ACTIONS (BAS ANCRÉ) -->
         <div id="actionControls" class="zone-actions-bas">
             <button id="btnAttaque" onclick="preparerAttaque()" class="btn brawl-btn btn-orange">ATTAQUE ⚔️</button>
             <button id="btnEsquive" onclick="jouerCoupLocal('esquive')" class="btn brawl-btn btn-blue">ESQUIVE 🛡️</button>
         </div>
     </div>
 
-    <!-- MODAL FIN DE MATCH (RÉCOMPENSES LOCALES) -->
     <div class="modal fade" id="rewardModal" data-bs-backdrop="static" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-dark border-success p-4 text-center text-white" style="border: 6px solid var(--brawl-green); border-radius:25px;">
@@ -424,7 +412,6 @@
         function retourLobby() {
             document.getElementById('battlePhase').classList.add('d-none');
             document.getElementById('setupPhase').classList.add('d-none');
-            // FIX : Réafficher le conteneur parent non-battle pour que le lobby soit visible
             document.getElementById('nonBattleInterface').classList.remove('d-none');
             document.getElementById('lobbyPhase').classList.remove('d-none');
         }
@@ -543,7 +530,8 @@
             });
 
             const eMini = document.getElementById('enemyMiniDeck'); eMini.innerHTML = "";
-            sonDeck = localMatch.deckJ2;
+            // FIX ICI : "const" ajouté pour empêcher la variable d'écraser les variables de deck globales
+            const sonDeck = localMatch.deckJ2;
             sonDeck.forEach((idCard, i) => {
                 let statusClass = (i === localMatch.indexJ2) ? 'active-mini' : (i < localMatch.indexJ2 ? 'ko-mini' : '');
                 eMini.innerHTML += `<img src="https://images.pokemontcg.io/swsh8/${idCard.replace('swsh8-', '')}_hires.png" class="mini-card ${statusClass}">`;
@@ -644,7 +632,7 @@
             }
         }
 
-   function finaliserTour(logTexte) {
+        function finaliserTour(logTexte) {
             localMatch.dernierCoup = logTexte;
             document.getElementById('combatLog').innerText = logTexte;
 
@@ -654,47 +642,9 @@
                 
                 setTimeout(() => {
                     document.getElementById('rewardTitle').innerText = vainqueurEstJoueur ? "🏆 VICTOIRE !" : "💀 DÉFAITE !";
-                    
-                    // 1. MODIFICATION DU TEXTE DE L'XP DANS LE MODAL (0 XP si défaite)
                     document.getElementById('rewardXpText').innerText = vainqueurEstJoueur ? "+5 XP Gagnés !" : "+0 XP (Essaie encore !)";
                     
-                    // 2. MODIFICATION DE L'APPEL API (Envoi de 0 XP à la base de données si défaite)
-                    let gainXpVal = vainqueurEstJoueur ? 5 : 0; 
-                    
-                    fetch(`${API_URL}?action=attribuerXpHorsLigne&username=${encodeURIComponent(currentUser)}&xp=${gainXpVal}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data && data.levelUp) {
-                            let giftId = data.nouvelleCarte || (Math.floor(Math.random() * 280) + 1);
-                            document.getElementById('rewardCardImg').src = `https://images.pokemontcg.io/swsh8/${giftId}_hires.png`;
-                            document.getElementById('levelUpSection').classList.remove('d-none');
-                        } else {
-                            document.getElementById('levelUpSection').classList.add('d-none');
-                        }
-                    })
-                    .catch(() => {
-                        document.getElementById('levelUpSection').classList.add('d-none');
-                    });
-                    
-                    rewardModalInst.show();
-                }, 1000);
-            } else {
-                localMatch.tourA = (localMatch.tourA === "J1") ? "J2" : "J1";
-                synchroniserVisuelsLocaux();
-            }   
-        
-            localMatch.dernierCoup = logTexte;
-            document.getElementById('combatLog').innerText = logTexte;
-
-            if (localMatch.indexJ1 >= 3 || localMatch.indexJ2 >= 3) {
-                localMatch.statut = "termine";
-                let vainqueurEstJoueur = (localMatch.indexJ2 >= 3);
-                
-                setTimeout(() => {
-                    document.getElementById('rewardTitle').innerText = vainqueurEstJoueur ? "🏆 VICTOIRE !" : "💀 DÉFAITE !";
-                    document.getElementById('rewardXpText').innerText = vainqueurEstJoueur ? "+5 XP Gagnés !" : "+10 XP (Essaie encore !)";
-                    
-                    let gainXpVal = vainqueurEstJoueur ? 5 : 10;
+                    let gainXpVal = vainqueurEstJoueur ? 5 : 0;
                     fetch(`${API_URL}?action=attribuerXpHorsLigne&username=${encodeURIComponent(currentUser)}&xp=${gainXpVal}`)
                     .then(res => res.json())
                     .then(data => {
