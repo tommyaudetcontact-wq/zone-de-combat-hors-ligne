@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zone de Combat - Mode Entraînement Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --brawl-yellow: #FFF200; --brawl-blue: #00A6FF; --brawl-orange: #FF5500; 
+            --brawl-green: #10D010; --brawl-pink: #FF007F;
+            --feu-color: #FF4500; --eau-color: #00BFFF; --eclair-color: #FFD700; --feuille-color: #32CD32;
+            
+            --neon-green: #00FFCC;
+            --neon-pink: #FF007F;
+        }
+        
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background: radial-gradient(circle, #20003b 0%, #090014 100%); 
+            color: #fff; 
+            min-height: 100vh; 
+            overflow-x: hidden;
+            user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .brawl-font { 
+            font-family: 'Luckiest Guy', cursive; 
+            -webkit-text-stroke: 2px #000; 
+            text-shadow: 4px 4px 0px #000; 
+        }
+        
+        .login-container { 
+            max-width: 450px; 
+            margin: 5vh auto; 
+            background: rgba(0, 0, 0, 0.6); 
+            border: 6px solid #000; 
+            border-radius: 25px; 
+        }
+        
+        .brawl-btn { 
+            font-family: 'Luckiest Guy', cursive; 
+            font-size: 1.2rem; 
+            color: white !important; 
+            text-shadow: 2px 2px 0px #000; 
+            border: 4px solid #000; 
+            border-radius: 15px; 
+            box-shadow: 0px 6px 0px #000; 
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        
+        .brawl-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0px 2px 0px #000;
+        }
+        
+        .brawl-btn:focus, .brawl-btn:focus-visible {
+            outline: none !important;
+            box-shadow: 0px 6px 0px #000 !important;
+        }
+        .brawl-btn:active:focus {
+            box-shadow: 0px 2px 0px #000 !important;
+        }
+        
+        .brawl-btn:disabled { 
+            opacity: 0.5; 
+            box-shadow: none; 
+            transform: none; 
+        }
+        
+        .btn-yellow { background-color: var(--brawl-yellow); color: #000 !important; text-shadow: none; }
+        .btn-blue { background-color: var(--brawl-blue); } 
+        .btn-orange { background-color: var(--brawl-orange); } 
+        .btn-green { background-color: var(--brawl-green); } 
+        .btn-pink { background-color: var(--brawl-pink); }
+        
+        .brawl-card { 
+            background: #240046; 
+            border: 4px solid #000; 
+            border-radius: 20px; 
+            box-shadow: 0px 8px 0px #000; 
+        }
+        
+        /* --- ARÈNE DE COMBAT --- */
+        #battlePhase {
+            height: 100vh;
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            padding: 8px;
+            position: relative;
+            margin: 0;
+        }
+
+        .zone-adversaire {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 0, 0, 0.08);
+            border: 3px solid rgba(255, 50, 50, 0.4);
+            border-radius: 16px;
+            margin-bottom: 4px;
+            padding: 12px 6px;
+            position: relative;
+        }
+
+        .zone-moi {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 255, 0, 0.08);
+            border: 3px solid rgba(50, 255, 50, 0.4);
+            border-radius: 16px;
+            margin-bottom: 6px;
+            padding: 12px 6px;
+            position: relative;
+        }
+
+        .zone-actions-bas {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            padding-bottom: env(safe-area-inset-bottom, 4px);
+        }
+
+        .zone-actions-bas .brawl-btn {
+            flex: 1;
+            font-size: 1.3rem;
+            padding: 10px 0;
+            border-radius: 14px;
+        }
+
+        .pokemon-card-wrapper { 
+            background: transparent; 
+            padding: 0; 
+            border: 4px solid var(--neon-green); 
+            border-radius: 12px; 
+            width: 100%;
+            aspect-ratio: 5 / 7;
+            cursor: pointer; 
+            display: inline-block;
+            box-shadow: 0 0 12px var(--neon-green); 
+            transition: all 0.3s ease; 
+            position: relative; 
+            overflow: hidden; 
+        }
+        
+        #battlePhase .pokemon-card-wrapper {
+            flex: 1;
+            min-height: 0;
+            height: 100%;
+            max-height: 140px; 
+            width: auto;
+            margin: 8px 0;
+        }
+
+        .pokemon-card-wrapper.selected { 
+            border-color: var(--brawl-yellow) !important; 
+            box-shadow: 0 0 18px var(--brawl-yellow); 
+            transform: scale(1.05);
+        }
+        
+        .pokemon-card-img { 
+            height: 100%; 
+            width: 100%; 
+            object-fit: fill; 
+            border-radius: 8px; 
+            display: block; 
+            transition: all 0.5s ease; 
+        }
+        
+        .hp-bar-container { background: #222; border: 3px solid #000; border-radius: 10px; height: 20px; width: 75%; position: relative; overflow: hidden; }
+        .hp-bar-fill { background: linear-gradient(to right, #ff0055, #10d010); height: 100%; width: 100%; transition: width 0.4s ease; }
+        .hp-text { position: absolute; width: 100%; text-align: center; top: 0; left: 0; font-family: 'Luckiest Guy', cursive; font-size: 0.8rem; text-shadow: 1px 1px 0 #000; color: #fff; }
+        
+        .log-box { 
+            background: rgba(0,0,0,0.6); 
+            border: 2px solid #000; 
+            border-radius: 8px; 
+            padding: 2px 6px; 
+            font-size: 0.85rem; 
+            font-weight: bold; 
+            width: 100%;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+        
+        .mini-card { width: 30px; height: 42px; object-fit: contain; border-radius: 4px; border: 2px solid #000; margin: 1px; display: inline-block; }
+        .mini-card.ko-mini { filter: grayscale(1) brightness(0.2); opacity: 0.3; }
+        .mini-card.active-mini { border-color: var(--brawl-yellow); transform: scale(1.1); box-shadow: 0 0 6px var(--brawl-yellow); }
+
+        .fx-projectile { position: fixed; font-size: 3.8rem; z-index: 9999; pointer-events: none; transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1); }
+        .fx-particle { position: fixed; width: 8px; height: 8px; border-radius: 50%; z-index: 10000; pointer-events: none; opacity: 1; }
+        
+        @keyframes shake { 0%, 100% { transform: translate(0, 0); } 20%, 60% { transform: translate(-8px, 4px); } 40%, 80% { transform: translate(8px, -4px); } }
+        .shake-card { animation: shake 0.4s ease-in-out; }
+
+        .shatter-card { animation: shatterAnim 0.8s ease-in-out forwards; filter: contrast(1.5) brightness(0.5) sepia(1) hue-rotate(-50deg); }
+        @keyframes shatterAnim {
+            0% { transform: scale(1) rotate(0deg); opacity: 1; }
+            30% { transform: scale(1.05) rotate(2deg); filter: blur(0.5px); }
+            100% { transform: scale(0) rotate(-15deg); opacity: 0; }
+        }
+        
+        .glass-crack::after {
+            content: "⚡"; position: absolute; top:0; left:0; width:100%; height:100%;
+            font-size: 4rem; display:flex; align-items:center; justify-content:center;
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: contrast(2) blur(1px); z-index: 10;
+        }
+
+        /* --- NOTIFICATION DE TOUR BRAWL STARS --- */
+        .brawl-banner-container {
+            position: fixed; top: 40%; left: 0; width: 100%; pointer-events: none; z-index: 99999; display: none;
+        }
+        .brawl-banner-text {
+            font-family: 'Luckiest Guy', cursive; font-size: 2.5rem; text-align: center;
+            text-shadow: 4px 4px 0px #000; -webkit-text-stroke: 2px #000; white-space: nowrap;
+            display: inline-block; width: 100%;
+            animation: brawlFlyTrack 1.6s cubic-bezier(0.18, 0.89, 0.32, 1.15) forwards;
+        }
+        .banner-moi { color: var(--brawl-yellow); }
+        .banner-adversaire { color: #FF3333; }
+
+        @keyframes brawlFlyTrack {
+            0% { transform: translateX(100%) scale(0.7); opacity: 0; }
+            25% { transform: translateX(0%) scale(1.1); opacity: 1; }
+            55% { transform: translateX(0%) scale(1); opacity: 1; }
+            70% { transform: translateX(-4%) scale(1); opacity: 1; }
+            100% { transform: translateX(-150%) scale(0.8); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- INTERFACE APPLICATIVE GENERALE (HORS ARENE) -->
+    <div id="nonBattleInterface" class="container py-3">
+        <!-- HEADER GENERAL -->
+        <div id="headerBar" class="d-flex justify-content-between align-items-center mb-3 d-none">
+            <div><h2 class="brawl-font text-warning mb-0" id="displayUsername">JOUEUR</h2></div>
+            <button onclick="retourLobby()" class="btn brawl-btn btn-pink px-4 py-2">⬅ QUITTER</button>
+        </div>
+
+        <!-- ÉCRAN CONNEXION -->
+        <div id="loginPage" class="login-container p-5 text-center">
+            <h1 class="brawl-font text-info mb-4" style="font-size: 3rem;">ARÈNE BOT</h1>
+            <div class="mb-4 text-start">
+                <label class="form-label fw-bold">Choisis ton nom :</label>
+                <select id="usernameSelect" class="form-select bg-dark text-white"><option value="">Chargement...</option></select>
+            </div>
+            <button onclick="handleLogin()" class="btn brawl-btn btn-yellow w-100 py-3">SE CONNECTER</button>
+        </div>
+
+        <!-- LOBBY HORS-LIGNE -->
+        <div id="lobbyPhase" class="brawl-card p-4 mb-4 text-center d-none">
+            <h3 class="brawl-font text-info mb-3">ENTRAINEMENT HORS-LIGNE</h3>
+            <div class="mb-3 mx-auto" style="max-width: 400px;">
+                <p class="text-white fs-5">Prêt à affronter le Robot-Pokémon de l'Arène ?</p>
+                <button onclick="lancerConfigurationDeck()" class="btn brawl-btn btn-orange w-100 py-3">DÉFIER LE BOT 🤖</button>
+            </div>
+        </div>
+
+        <!-- SÉLECTION CARTES -->
+        <div id="setupPhase" class="brawl-card p-4 mb-4 d-none">
+            <h3 class="brawl-font text-center text-warning mb-3" id="setupTitle">CHOISIS TES 3 POKÉMONS DE COMBAT</h3>
+            <div id="selectionGrid" class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3 mb-4 justify-content-center"></div>
+            <div class="text-center"><button id="startMatchBtn" onclick="validerMonDeck()" class="btn brawl-btn btn-green px-5 py-3 fs-4" disabled>LANCER LE COMBAT (0/3)</button></div>
+        </div>
+    </div>
+
+    <!-- ARÈNE DE COMBAT EMPILÉE (100VH RECOUVRE TOUT) -->
+    <div id="battlePhase" class="d-none">
+        
+        <!-- BANDEAU ANIMÉ FLOATING NOTIFICATION TOUR -->
+        <div id="brawlTurnBanner" class="brawl-banner-container">
+            <div id="brawlBannerText" class="brawl-banner-text">À TON TOUR ! 🔥</div>
+        </div>
+
+        <!-- 1. CÔTÉ BOT (HAUT) -->
+        <div class="zone-adversaire" id="enemyFighterCardNode">
+            <h5 class="brawl-font text-danger mb-1" id="battleEnemyName">BOT ROBOT</h5>
+            <div class="hp-bar-container"><div id="enemyHpBar" class="hp-bar-fill"></div><div id="enemyHpText" class="hp-text">25 / 25 PV</div></div>
+            <div class="pokemon-card-wrapper" id="enemyCardAnchor" style="border-color: var(--neon-pink); box-shadow: 0 0 12px var(--neon-pink); aspect-ratio: 5 / 7;"><img id="enemyFighterImg" src="" class="pokemon-card-img"></div>
+            <div id="enemyMiniDeck" class="d-flex justify-content-center mt-1"></div>
+        </div>
+        
+        <!-- LOG DES ÉVÉNEMENTS INTERMÉDIAIRE -->
+        <div class="log-box text-warning" id="combatLog">Le match va débuter...</div>
+        
+        <!-- 2. CÔTÉ MOI (MILIEU) -->
+        <div class="zone-moi" id="myFighterCardNode">
+            <div class="hp-bar-container"><div id="playerHpBar" class="hp-bar-fill"></div><div id="playerHpText" class="hp-text">25 / 25 PV</div></div>
+            <div class="pokemon-card-wrapper" id="myCardAnchor"><img id="playerFighterImg" src="" class="pokemon-card-img"></div>
+            <div id="playerMiniDeck" class="d-flex justify-content-center mt-1"></div>
+            <h5 class="brawl-font text-success mt-1 mb-0" id="battlePlayerName">MOI</h5>
+        </div>
+        
+        <!-- 3. CONTROLES ACTIONS (BAS ANCRÉ) -->
+        <div id="actionControls" class="zone-actions-bas">
+            <button id="btnAttaque" onclick="preparerAttaque()" class="btn brawl-btn btn-orange">ATTAQUE ⚔️</button>
+            <button id="btnEsquive" onclick="jouerCoupLocal('esquive')" class="btn brawl-btn btn-blue">ESQUIVE 🛡️</button>
+        </div>
+    </div>
+
+    <!-- MODAL FIN DE MATCH (RÉCOMPENSES LOCALES) -->
+    <div class="modal fade" id="rewardModal" data-bs-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-success p-4 text-center text-white" style="border: 6px solid var(--brawl-green); border-radius:25px;">
+                <h1 class="brawl-font text-warning mb-2" style="font-size: 3rem;" id="rewardTitle">FIN DU COMBAT</h1>
+                <p class="fs-4 text-white fw-bold mb-2" id="rewardXpText">+0 XP Gagné</p>
+                
+                <div id="levelUpSection" class="d-none my-3 p-3 bg-black border border-warning rounded">
+                    <h3 class="brawl-font text-danger">🎉 CADEAU NIVEAU SUPÉRIEUR !</h3>
+                    <p class="text-info font-monospace">Tu débloques cette carte pour ton compte :</p>
+                    <div style="max-width: 140px; display:inline-block;"><img id="rewardCardImg" src="" class="img-fluid rounded border border-white"></div>
+                </div>
+
+                <button onclick="recommencerNouvellePartie()" class="btn brawl-btn btn-yellow py-3 px-5 mt-3 w-100">RETOUR AU LOBBY</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbzKgKRkfVyQuNCrc0T13iH1orPFeWIZAK4kB_emnRFimN-ae_HzISIqUzZ_g1aWgPwHjg/exec";
+        let currentUser = null, selectedTeamIds = [], myCollection = [];
+        let rewardModalInst = null;
+        let isCardsLoaded = false;
+        
+        let localMatch = {
+            statut: "lobby",
+            hpJ1: 25, hpJ2: 25,
+            indexJ1: 0, indexJ2: 0,
+            deckJ1: [], deckJ2: [],
+            tourA: "J1",
+            dernierCoup: "Le match va débuter...",
+            esquiveJ1Active: false,
+            esquiveJ2Active: false
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            rewardModalInst = new bootstrap.Modal(document.getElementById('rewardModal'));
+            
+            const s1 = document.getElementById('usernameSelect');
+            s1.innerHTML = '<option value="">Connexion au serveur...</option>';
+
+            fetch(`${API_URL}?action=getMembres`)
+                .then(res => res.json())
+                .then(membres => {
+                    s1.innerHTML = '<option value="">-- Qui es-tu ? --</option>';
+                    membres.forEach(m => {
+                        if (m) {
+                            let nomJoueur = (typeof m === 'object') ? (m.Nom || m.user) : m;
+                            if (nomJoueur && nomJoueur !== 'Admin') {
+                                s1.innerHTML += `<option value="${nomJoueur}">${nomJoueur}</option>`;
+                            }
+                        }
+                    });
+                })
+                .catch(() => {
+                    s1.innerHTML = '<option value="Tommy">Tommy (Mode Secours)</option><option value="Benjamin">Benjamin (Mode Secours)</option>';
+                });
+        });
+
+        function handleLogin() {
+            currentUser = document.getElementById('usernameSelect').value; if(!currentUser) return;
+            document.getElementById('loginPage').classList.add('d-none'); 
+            document.getElementById('headerBar').classList.remove('d-none');
+            document.getElementById('lobbyPhase').classList.remove('d-none');
+            document.getElementById('displayUsername').innerText = currentUser.toUpperCase();
+
+            const botBtn = document.querySelector("#lobbyPhase button");
+            botBtn.disabled = true;
+            botBtn.innerText = "CHARGEMENT DE TES CARTES... ⏳";
+
+            fetch(`${API_URL}?action=getCollection`)
+                .then(res => res.json())
+                .then(cards => {
+                    if (Array.isArray(cards)) {
+                        myCollection = cards.filter(c => (c.Nom_Joueur || "").toLowerCase() === currentUser.toLowerCase());
+                    }
+                    if (!myCollection || myCollection.length === 0) {
+                        attribuerCollectionSecours();
+                    }
+                    finaliserChargementCartes(botBtn);
+                })
+                .catch(() => {
+                    attribuerCollectionSecours();
+                    finaliserChargementCartes(botBtn);
+                });
+        }
+
+        function attribuerCollectionSecours() {
+            console.log("Utilisation de la collection de secours.");
+            myCollection = [
+                { Pokemon_API_ID: "swsh8-10", Image: "https://images.pokemontcg.io/swsh8/10_hires.png" },
+                { Pokemon_API_ID: "swsh8-25", Image: "https://images.pokemontcg.io/swsh8/25_hires.png" },
+                { Pokemon_API_ID: "swsh8-50", Image: "https://images.pokemontcg.io/swsh8/50_hires.png" }
+            ];
+        }
+
+        function finaliserChargementCartes(boutonElement) {
+            isCardsLoaded = true;
+            boutonElement.disabled = false;
+            boutonElement.innerText = "DÉFIER LE BOT 🤖";
+        }
+
+        function retourLobby() {
+            document.getElementById('battlePhase').classList.add('d-none');
+            document.getElementById('setupPhase').classList.add('d-none');
+            // FIX : Réafficher le conteneur parent non-battle pour que le lobby soit visible
+            document.getElementById('nonBattleInterface').classList.remove('d-none');
+            document.getElementById('lobbyPhase').classList.remove('d-none');
+        }
+
+        function lancerConfigurationDeck() {
+            if (!isCardsLoaded) return alert("Tes cartes sont encore en cours de chargement, patiente une seconde !");
+            document.getElementById('lobbyPhase').classList.add('d-none');
+            document.getElementById('setupPhase').classList.remove('d-none');
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const container = document.getElementById('selectionGrid'); 
+            container.innerHTML = "";
+
+            if (!myCollection || myCollection.length === 0) {
+                container.innerHTML = `<div class="text-center w-100 py-4 text-danger fw-bold">Aucune carte trouvée dans ta collection !</div>`;
+                return;
+            }
+
+            myCollection.forEach((c, idx) => {
+                let img = c.Image_URL || c.Image; 
+                let id = c.Pokemon_API_ID || idx; 
+                let isSel = selectedTeamIds.includes(id) ? 'selected' : '';
+                container.innerHTML += `<div class="col"><div class="pokemon-card-wrapper ${isSel}" onclick="toggleCard('${id}')"><img src="${img}" class="pokemon-card-img"></div></div>`;
+            });
+        }
+
+        function toggleCard(id) {
+            if(selectedTeamIds.includes(id)) {
+                selectedTeamIds = selectedTeamIds.filter(i => i !== id); 
+            } else if (selectedTeamIds.length < 3) {
+                selectedTeamIds.push(id);
+            }
+            renderGrid();
+            document.getElementById('startMatchBtn').innerText = `LANCER LE COMBAT (${selectedTeamIds.length} / 3)`;
+            document.getElementById('startMatchBtn').disabled = selectedTeamIds.length !== 3;
+        }
+
+        function validerMonDeck() {
+            let botDeck = [];
+            for (let i = 0; i < 3; i++) {
+                let randId = Math.floor(Math.random() * 280) + 1;
+                botDeck.push(`swsh8-${randId}`);
+            }
+
+            localMatch = {
+                statut: "actif",
+                hpJ1: 25, hpJ2: 25,
+                indexJ1: 0, indexJ2: 0,
+                deckJ1: [...selectedTeamIds],
+                deckJ2: botDeck,
+                tourA: "J1",
+                dernierCoup: "Le combat commence ! À toi de jouer !",
+                esquiveJ1Active: false,
+                esquiveJ2Active: false
+            };
+
+            document.getElementById('nonBattleInterface').classList.add('d-none');
+            document.getElementById('battlePhase').classList.remove('d-none');
+            
+            document.getElementById('battleEnemyName').innerText = "ROBOT-BOT 🤖";
+            document.getElementById('battlePlayerName').innerText = currentUser.toUpperCase();
+
+            synchroniserVisuelsLocaux();
+        }
+
+        function animerBandeauTour(tourActuel) {
+            const bannerContainer = document.getElementById('brawlTurnBanner');
+            const bannerText = document.getElementById('brawlBannerText');
+
+            bannerContainer.style.display = 'none';
+            void bannerContainer.offsetWidth; 
+            bannerContainer.style.display = 'block';
+
+            if (tourActuel === "J1") {
+                bannerText.innerText = "À TON TOUR ! 🔥";
+                bannerText.className = "brawl-banner-text banner-moi";
+            } else {
+                bannerText.innerText = `TOUR DU BOT 🤖`;
+                bannerText.className = "brawl-banner-text banner-adversaire";
+            }
+
+            setTimeout(() => {
+                bannerContainer.style.display = 'none';
+            }, 1600);
+        }
+
+        function synchroniserVisuelsLocaux() {
+            let isMoi = (localMatch.tourA === "J1");
+
+            animerBandeauTour(localMatch.tourA);
+
+            let monIndexVis = localMatch.indexJ1 >= 3 ? 2 : localMatch.indexJ1;
+            let sonIndexVis = localMatch.indexJ2 >= 3 ? 2 : localMatch.indexJ2;
+
+            document.getElementById('playerFighterImg').src = `https://images.pokemontcg.io/swsh8/${localMatch.deckJ1[monIndexVis].replace('swsh8-', '')}_hires.png`;
+            document.getElementById('enemyFighterImg').src = `https://images.pokemontcg.io/swsh8/${localMatch.deckJ2[sonIndexVis].replace('swsh8-', '')}_hires.png`;
+
+            let monPvAffiche = localMatch.indexJ1 >= 3 ? 0 : localMatch.hpJ1;
+            let sonPvAffiche = localMatch.indexJ2 >= 3 ? 0 : localMatch.hpJ2;
+
+            document.getElementById('playerHpBar').style.width = (monPvAffiche / 25 * 100) + "%"; 
+            document.getElementById('playerHpText').innerText = `${monPvAffiche} / 25 PV`;
+            
+            document.getElementById('enemyHpBar').style.width = (sonPvAffiche / 25 * 100) + "%"; 
+            document.getElementById('enemyHpText').innerText = `${sonPvAffiche} / 25 PV`;
+
+            document.getElementById('btnAttaque').disabled = !isMoi;
+            document.getElementById('btnEsquive').disabled = !isMoi;
+
+            const pMini = document.getElementById('playerMiniDeck'); pMini.innerHTML = "";
+            localMatch.deckJ1.forEach((idCard, i) => {
+                let statusClass = (i === localMatch.indexJ1) ? 'active-mini' : (i < localMatch.indexJ1 ? 'ko-mini' : '');
+                pMini.innerHTML += `<img src="https://images.pokemontcg.io/swsh8/${idCard.replace('swsh8-', '')}_hires.png" class="mini-card ${statusClass}">`;
+            });
+
+            const eMini = document.getElementById('enemyMiniDeck'); eMini.innerHTML = "";
+            sonDeck = localMatch.deckJ2;
+            sonDeck.forEach((idCard, i) => {
+                let statusClass = (i === localMatch.indexJ2) ? 'active-mini' : (i < localMatch.indexJ2 ? 'ko-mini' : '');
+                eMini.innerHTML += `<img src="https://images.pokemontcg.io/swsh8/${idCard.replace('swsh8-', '')}_hires.png" class="mini-card ${statusClass}">`;
+            });
+
+            if (localMatch.tourA === "J2" && localMatch.statut === "actif") {
+                setTimeout(decisionBot, 1500);
+            }
+        }
+
+        function preparerAttaque() {
+            const elements = ['feu', 'eau', 'eclair', 'feuille'];
+            const elementChoisi = elements[Math.floor(Math.random() * elements.length)];
+            let dmg = Math.floor(Math.random() * 12) + 10;
+            jouerCoupLocal('attaque', dmg, elementChoisi);
+        }
+
+        function decisionBot() {
+            let indexBot = localMatch.indexJ2;
+            let hpBot = localMatch.hpJ2;
+            let choixBot = "attaque";
+
+            if (indexBot === 2) { 
+                if (hpBot <= 15) {
+                    choixBot = (Math.random() < 0.65) ? "esquive" : "attaque";
+                } else {
+                    choixBot = (Math.random() < 0.15) ? "esquive" : "attaque";
+                }
+            } 
+            
+            if (choixBot === "attaque") {
+                const elements = ['feu', 'eau', 'eclair', 'feuille'];
+                const elementChoisi = elements[Math.floor(Math.random() * elements.length)];
+                let dmg = Math.floor(Math.random() * 12) + 10;
+                jouerCoupLocal('attaque', dmg, elementChoisi);
+            } else {
+                jouerCoupLocal('esquive');
+            }
+        }
+
+        function jouerCoupLocal(type, dmg = 0, element = "") {
+            document.getElementById('btnAttaque').disabled = true;
+            document.getElementById('btnEsquive').disabled = true;
+
+            let logCoup = "";
+            let animDepuisMoi = (localMatch.tourA === "J1");
+
+            if (type === 'attaque') {
+                let esquiveActive = animDepuisMoi ? localMatch.esquiveJ2Active : localMatch.esquiveJ1Active;
+                
+                localMatch.esquiveJ1Active = false;
+                localMatch.esquiveJ2Active = false;
+
+                if (esquiveActive) {
+                    logCoup = `${animDepuisMoi ? currentUser : "Le Bot"} attaque... mais l'esquive était active ! CONTRE-ATTAQUE ! ${animDepuisMoi ? "Tu subis" : "Le Bot subit"} ${dmg} dégâts !`;
+                    if (animDepuisMoi) {
+                        localMatch.hpJ1 -= dmg;
+                        if (localMatch.hpJ1 <= 0) {
+                            localMatch.hpJ1 = 25; localMatch.indexJ1 += 1;
+                            executerAnimationShatter(true, localMatch.deckJ1[localMatch.indexJ1 - 1], localMatch.deckJ1[localMatch.indexJ1]);
+                        }
+                    } else {
+                        localMatch.hpJ2 -= dmg;
+                        if (localMatch.hpJ2 <= 0) {
+                            localMatch.hpJ2 = 25; localMatch.indexJ2 += 1;
+                            executerAnimationShatter(false, localMatch.deckJ2[localMatch.indexJ2 - 1], localMatch.deckJ2[localMatch.indexJ2]);
+                        }
+                    }
+                } else {
+                    logCoup = `${animDepuisMoi ? currentUser : "Le Bot"} lance une attaque [${element}] et inflige ${dmg} dégâts !`;
+                    if (animDepuisMoi) {
+                        localMatch.hpJ2 -= dmg;
+                        if (localMatch.hpJ2 <= 0) {
+                            localMatch.hpJ2 = 25; localMatch.indexJ2 += 1;
+                            executerAnimationShatter(false, localMatch.deckJ2[localMatch.indexJ2 - 1], localMatch.deckJ2[localMatch.indexJ2]);
+                        }
+                    } else {
+                        localMatch.hpJ1 -= dmg;
+                        if (localMatch.hpJ1 <= 0) {
+                            localMatch.hpJ1 = 25; localMatch.indexJ1 += 1;
+                            executerAnimationShatter(true, localMatch.deckJ1[localMatch.indexJ1 - 1], localMatch.deckJ1[localMatch.indexJ1]);
+                        }
+                    }
+                }
+                lancerAnimationFX(animDepuisMoi, element, esquiveActive, logCoup);
+            } 
+            else if (type === 'esquive') {
+                let reussiteSecrete = Math.random() < 0.33;
+                
+                if (animDepuisMoi) {
+                    localMatch.esquiveJ1Active = reussiteSecrete;
+                } else {
+                    localMatch.esquiveJ2Active = reussiteSecrete;
+                }
+
+                logCoup = `${animDepuisMoi ? currentUser : "Le Bot"} se prépare à esquiver ! 🛡️`;
+                finaliserTour(logCoup);
+            }
+        }
+
+   function finaliserTour(logTexte) {
+            localMatch.dernierCoup = logTexte;
+            document.getElementById('combatLog').innerText = logTexte;
+
+            if (localMatch.indexJ1 >= 3 || localMatch.indexJ2 >= 3) {
+                localMatch.statut = "termine";
+                let vainqueurEstJoueur = (localMatch.indexJ2 >= 3);
+                
+                setTimeout(() => {
+                    document.getElementById('rewardTitle').innerText = vainqueurEstJoueur ? "🏆 VICTOIRE !" : "💀 DÉFAITE !";
+                    
+                    // 1. MODIFICATION DU TEXTE DE L'XP DANS LE MODAL (0 XP si défaite)
+                    document.getElementById('rewardXpText').innerText = vainqueurEstJoueur ? "+5 XP Gagnés !" : "+0 XP (Essaie encore !)";
+                    
+                    // 2. MODIFICATION DE L'APPEL API (Envoi de 0 XP à la base de données si défaite)
+                    let gainXpVal = vainqueurEstJoueur ? 5 : 0; 
+                    
+                    fetch(`${API_URL}?action=attribuerXpHorsLigne&username=${encodeURIComponent(currentUser)}&xp=${gainXpVal}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.levelUp) {
+                            let giftId = data.nouvelleCarte || (Math.floor(Math.random() * 280) + 1);
+                            document.getElementById('rewardCardImg').src = `https://images.pokemontcg.io/swsh8/${giftId}_hires.png`;
+                            document.getElementById('levelUpSection').classList.remove('d-none');
+                        } else {
+                            document.getElementById('levelUpSection').classList.add('d-none');
+                        }
+                    })
+                    .catch(() => {
+                        document.getElementById('levelUpSection').classList.add('d-none');
+                    });
+                    
+                    rewardModalInst.show();
+                }, 1000);
+            } else {
+                localMatch.tourA = (localMatch.tourA === "J1") ? "J2" : "J1";
+                synchroniserVisuelsLocaux();
+            }
+        }
+            localMatch.dernierCoup = logTexte;
+            document.getElementById('combatLog').innerText = logTexte;
+
+            if (localMatch.indexJ1 >= 3 || localMatch.indexJ2 >= 3) {
+                localMatch.statut = "termine";
+                let vainqueurEstJoueur = (localMatch.indexJ2 >= 3);
+                
+                setTimeout(() => {
+                    document.getElementById('rewardTitle').innerText = vainqueurEstJoueur ? "🏆 VICTOIRE !" : "💀 DÉFAITE !";
+                    document.getElementById('rewardXpText').innerText = vainqueurEstJoueur ? "+5 XP Gagnés !" : "+10 XP (Essaie encore !)";
+                    
+                    let gainXpVal = vainqueurEstJoueur ? 5 : 10;
+                    fetch(`${API_URL}?action=attribuerXpHorsLigne&username=${encodeURIComponent(currentUser)}&xp=${gainXpVal}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.levelUp) {
+                            let giftId = data.nouvelleCarte || (Math.floor(Math.random() * 280) + 1);
+                            document.getElementById('rewardCardImg').src = `https://images.pokemontcg.io/swsh8/${giftId}_hires.png`;
+                            document.getElementById('levelUpSection').classList.remove('d-none');
+                        } else {
+                            document.getElementById('levelUpSection').classList.add('d-none');
+                        }
+                    })
+                    .catch(() => {
+                        document.getElementById('levelUpSection').classList.add('d-none');
+                    });
+                    
+                    rewardModalInst.show();
+                }, 1000);
+            } else {
+                localMatch.tourA = (localMatch.tourA === "J1") ? "J2" : "J1";
+                synchroniserVisuelsLocaux();
+            }
+        }
+
+        function executerAnimationShatter(estMoi, idAncienneCarte, idNouvelleCarte) {
+            const anchor = estMoi ? document.getElementById('myCardAnchor') : document.getElementById('enemyCardAnchor');
+            const imgEl = estMoi ? document.getElementById('playerFighterImg') : document.getElementById('enemyFighterImg');
+            anchor.classList.add('shatter-card', 'glass-crack');
+            setTimeout(() => {
+                anchor.classList.remove('shatter-card', 'glass-crack');
+                if (idNouvelleCarte) {
+                    imgEl.src = `https://images.pokemontcg.io/swsh8/${idNouvelleCarte.replace('swsh8-', '')}_hires.png`;
+                    anchor.style.transform = "scale(0.2)";
+                    setTimeout(() => { anchor.style.transform = "scale(1)"; }, 50);
+                }
+            }, 800);
+        }
+
+        function recommencerNouvellePartie() {
+            rewardModalInst.hide();
+            selectedTeamIds = [];
+            
+            const startBtn = document.getElementById('startMatchBtn');
+            startBtn.innerText = "LANCER LE COMBAT (0/3)";
+            startBtn.disabled = true;
+            
+            document.getElementById('selectionGrid').innerHTML = "";
+            
+            retourLobby();
+        }
+
+        function lancerAnimationFX(depuisMoi, element, estUnContre, logTexte) {
+            const origine = depuisMoi ? document.getElementById('myCardAnchor') : document.getElementById('enemyCardAnchor');
+            const cible = depuisMoi ? document.getElementById('enemyCardAnchor') : document.getElementById('myCardAnchor');
+            const cibleCardNode = depuisMoi ? document.getElementById('enemyFighterCardNode') : document.getElementById('myFighterCardNode');
+            if (!origine || !cible) return;
+            const rOrigine = origine.getBoundingClientRect(); const rCible = cible.getBoundingClientRect();
+            let emoji = '🔥', colorFX = 'var(--feu-color)';
+            if (element === 'eau') { emoji = '💧'; colorFX = 'var(--eau-color)'; }
+            else if (element === 'eclair') { emoji = '⚡'; colorFX = 'var(--eclair-color)'; }
+            else if (element === 'feuille') { emoji = '🍃'; colorFX = 'var(--feuille-color)'; }
+            
+            const fx = document.createElement('div'); fx.className = 'fx-projectile'; fx.innerText = emoji;
+            fx.style.left = `${rOrigine.left + (rOrigine.width / 2) - 25}px`; fx.style.top = `${rOrigine.top + (rOrigine.height / 2) - 25}px`;
+            document.body.appendChild(fx);
+            
+            setTimeout(() => { fx.style.left = `${rCible.left + (rCible.width / 2) - 25}px`; fx.style.top = `${rCible.top + (rCible.height / 2) - 25}px`; fx.style.transform = "scale(1.7) rotate(360deg)"; }, 50);
+            
+            setTimeout(() => { 
+                fx.remove(); 
+                genererExplosionParticules(rCible.left + (rCible.width / 2), rCible.top + (rCible.height / 2), colorFX); 
+                cibleCardNode.classList.add('shake-card'); 
+                setTimeout(() => { cibleCardNode.classList.remove('shake-card'); }, 400); 
+
+                finaliserTour(logTexte);
+            }, 750);
+        }
+
+        function genererExplosionParticules(centerX, centerY, couleur) {
+            const nbParticules = 22;
+            for (let i = 0; i < nbParticules; i++) {
+                const particule = document.createElement('div'); particule.className = 'fx-particle'; particule.style.backgroundColor = couleur;
+                particule.style.left = `${centerX}px`; particule.style.top = `${centerY}px`;
+                const size = Math.floor(Math.random() * 8) + 4; particule.style.width = `${size}px`; particule.style.height = `${size}px`;
+                document.body.appendChild(particule);
+                const angle = Math.random() * Math.PI * 2; const distance = Math.floor(Math.random() * 80) + 40;
+                const targetX = centerX + Math.cos(angle) * distance; const targetY = centerY + Math.sin(angle) * distance;
+                particule.animate([ { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }, { left: `${targetX}px`, top: `${targetY}px`, transform: 'translate(-50%, -50%) scale(0)', opacity: 0 } ], { duration: 600 + Math.random() * 300, easing: 'cubic-bezier(0.1, 0.8, 0.3, 1)', fill: 'forwards' });
+                setTimeout(() => particule.remove(), 900);
+            }
+        }
+    </script>
+</body>
+</html>
