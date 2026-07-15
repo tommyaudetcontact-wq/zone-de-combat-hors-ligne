@@ -253,8 +253,7 @@
     <div id="nonBattleInterface" class="container py-3">
         <div id="headerBar" class="d-flex justify-content-between align-items-center mb-3 d-none">
             <div><h2 class="brawl-font text-warning mb-0" id="displayUsername">JOUEUR</h2></div>
-            <button onclick="retourLobby()" class="btn brawl-btn btn-pink px-4 py-2">⬅ QUITTER</button>
-        </div>
+<button onclick="window.location.href='https://tommyaudetcontact-wq.github.io/brawlTasks2.0/'" class="btn brawl-btn btn-pink px-4 py-2">⬅ QUITTER</button>        </div>
 
         <div id="loginPage" class="login-container p-5 text-center">
             <h1 class="brawl-font text-info mb-4" style="font-size: 3rem;">ARÈNE BOT</h1>
@@ -632,7 +631,7 @@
             }
         }
 
-        function finaliserTour(logTexte) {
+function finaliserTour(logTexte) {
             localMatch.dernierCoup = logTexte;
             document.getElementById('combatLog').innerText = logTexte;
 
@@ -642,9 +641,13 @@
                 
                 setTimeout(() => {
                     document.getElementById('rewardTitle').innerText = vainqueurEstJoueur ? "🏆 VICTOIRE !" : "💀 DÉFAITE !";
-                    document.getElementById('rewardXpText').innerText = vainqueurEstJoueur ? "+5 XP Gagnés !" : "+0 XP (Essaie encore !)";
                     
-                    let gainXpVal = vainqueurEstJoueur ? 5 : 0;
+                    // 1. MODIFICATION : Affichage visuel de 10 XP ou 0 XP
+                    document.getElementById('rewardXpText').innerText = vainqueurEstJoueur ? "+10 XP Gagnés !" : "+0 XP (Essaie encore !)";
+                    
+                    // 2. MODIFICATION : Valeur de 10 XP envoyée au Google Sheets
+                    let gainXpVal = vainqueurEstJoueur ? 10 : 0;
+                    
                     fetch(`${API_URL}?action=attribuerXpHorsLigne&username=${encodeURIComponent(currentUser)}&xp=${gainXpVal}`)
                     .then(res => res.json())
                     .then(data => {
@@ -655,12 +658,15 @@
                         } else {
                             document.getElementById('levelUpSection').classList.add('d-none');
                         }
+                        // On ouvre le modal seulement après avoir reçu la réponse du serveur
+                        rewardModalInst.show();
                     })
                     .catch(() => {
                         document.getElementById('levelUpSection').classList.add('d-none');
+                        // En cas d'erreur réseau, on ouvre quand même le modal pour ne pas bloquer le joueur
+                        rewardModalInst.show();
                     });
                     
-                    rewardModalInst.show();
                 }, 1000);
             } else {
                 localMatch.tourA = (localMatch.tourA === "J1") ? "J2" : "J1";
