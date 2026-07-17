@@ -325,7 +325,9 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbzKgKRkfVyQuNCrc0T13iH1orPFeWIZAK4kB_emnRFimN-ae_HzISIqUzZ_g1aWgPwHjg/exec";
+
+        
+        const API_URL = "https://script.google.com/macros/s/AKfycbxQIa8HMSBDhGczlwVmINFSyZp_hSuEcXEzB5r7_5KdwEcQVn00VKGLO_0rQVN8hjYx/exec";
         let currentUser = null, selectedTeamIds = [], myCollection = [];
         let rewardModalInst = null;
         let isCardsLoaded = false;
@@ -507,8 +509,9 @@
             let monIndexVis = localMatch.indexJ1 >= 3 ? 2 : localMatch.indexJ1;
             let sonIndexVis = localMatch.indexJ2 >= 3 ? 2 : localMatch.indexJ2;
 
-            document.getElementById('playerFighterImg').src = `https://images.pokemontcg.io/swsh8/${localMatch.deckJ1[monIndexVis].replace('swsh8-', '')}_hires.png`;
-            document.getElementById('enemyFighterImg').src = `https://images.pokemontcg.io/swsh8/${localMatch.deckJ2[sonIndexVis].replace('swsh8-', '')}_hires.png`;
+            // CORRECTIF : Utilisation de la vraie image dynamique (Pokémon ou Lorcana)
+            document.getElementById('playerFighterImg').src = getCardImgUrl(localMatch.deckJ1[monIndexVis]);
+            document.getElementById('enemyFighterImg').src = getCardImgUrl(localMatch.deckJ2[sonIndexVis]);
 
             let monPvAffiche = localMatch.indexJ1 >= 3 ? 0 : localMatch.hpJ1;
             let sonPvAffiche = localMatch.indexJ2 >= 3 ? 0 : localMatch.hpJ2;
@@ -525,21 +528,23 @@
             const pMini = document.getElementById('playerMiniDeck'); pMini.innerHTML = "";
             localMatch.deckJ1.forEach((idCard, i) => {
                 let statusClass = (i === localMatch.indexJ1) ? 'active-mini' : (i < localMatch.indexJ1 ? 'ko-mini' : '');
-                pMini.innerHTML += `<img src="https://images.pokemontcg.io/swsh8/${idCard.replace('swsh8-', '')}_hires.png" class="mini-card ${statusClass}">`;
+                // CORRECTIF : Miniatures dynamiques
+                pMini.innerHTML += `<img src="${getCardImgUrl(idCard)}" class="mini-card ${statusClass}">`;
             });
 
             const eMini = document.getElementById('enemyMiniDeck'); eMini.innerHTML = "";
-            // FIX ICI : "const" ajouté pour empêcher la variable d'écraser les variables de deck globales
             const sonDeck = localMatch.deckJ2;
             sonDeck.forEach((idCard, i) => {
                 let statusClass = (i === localMatch.indexJ2) ? 'active-mini' : (i < localMatch.indexJ2 ? 'ko-mini' : '');
-                eMini.innerHTML += `<img src="https://images.pokemontcg.io/swsh8/${idCard.replace('swsh8-', '')}_hires.png" class="mini-card ${statusClass}">`;
+                // CORRECTIF : Miniatures dynamiques
+                eMini.innerHTML += `<img src="${getCardImgUrl(idCard)}" class="mini-card ${statusClass}">`;
             });
 
             if (localMatch.tourA === "J2" && localMatch.statut === "actif") {
                 setTimeout(decisionBot, 1500);
             }
         }
+
 
         function preparerAttaque() {
             const elements = ['feu', 'eau', 'eclair', 'feuille'];
@@ -674,14 +679,15 @@ function finaliserTour(logTexte) {
             }
         }
 
-        function executerAnimationShatter(estMoi, idAncienneCarte, idNouvelleCarte) {
+function executerAnimationShatter(estMoi, idAncienneCarte, idNouvelleCarte) {
             const anchor = estMoi ? document.getElementById('myCardAnchor') : document.getElementById('enemyCardAnchor');
             const imgEl = estMoi ? document.getElementById('playerFighterImg') : document.getElementById('enemyFighterImg');
             anchor.classList.add('shatter-card', 'glass-crack');
             setTimeout(() => {
                 anchor.classList.remove('shatter-card', 'glass-crack');
                 if (idNouvelleCarte) {
-                    imgEl.src = `https://images.pokemontcg.io/swsh8/${idNouvelleCarte.replace('swsh8-', '')}_hires.png`;
+                    // CORRECTIF : Utilisation de la vraie image de rechange après un KO
+                    imgEl.src = getCardImgUrl(idNouvelleCarte);
                     anchor.style.transform = "scale(0.2)";
                     setTimeout(() => { anchor.style.transform = "scale(1)"; }, 50);
                 }
@@ -740,6 +746,26 @@ function finaliserTour(logTexte) {
                 particule.animate([ { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }, { left: `${targetX}px`, top: `${targetY}px`, transform: 'translate(-50%, -50%) scale(0)', opacity: 0 } ], { duration: 600 + Math.random() * 300, easing: 'cubic-bezier(0.1, 0.8, 0.3, 1)', fill: 'forwards' });
                 setTimeout(() => particule.remove(), 900);
             }
+        }
+
+        // Fonction d'aide pour obtenir la vraie image de la carte (Pokémon ou Lorcana)
+        function getCardImgUrl(cardId) {
+            // On cherche la carte dans la collection du joueur
+            let found = myCollection.find(c => {
+                let currentId = c.Pokemon_API_ID || c.ID || c.id || "";
+                return currentId.toString() === cardId.toString();
+            });
+            
+            if (found) {
+                return found.Image_URL || found.Image || "";
+            }
+            
+            // Fallback pour le Bot (qui utilise des cartes Pokémon générées)
+            if (typeof cardId === 'string' && cardId.startsWith('swsh8-')) {
+                return `https://images.pokemontcg.io/swsh8/${cardId.replace('swsh8-', '')}_hires.png`;
+            }
+            
+            return "https://placehold.co/280x390/151824/8b5cf6?text=Image+Non+Disponible";
         }
     </script>
 </body>
