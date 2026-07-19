@@ -2,7 +2,7 @@
  * zonedecombathorsligne.js - Logique globale du match et gestion RPG (Hors Pouvoirs)
  */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxQIa8HMSBDhGczlwVmINFSyZp_hSuEcXEzB5r7_5KdwEcQVn00VKGLO_0rQVN8hjYx/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzKgKRkfVyQuNCrc0T13iH1orPFeWIZAK4kB_emnRFimN-ae_HzISIqUzZ_g1aWgPwHjg/exec";
 let currentUser = null, selectedTeamIds = [], myCollection = [];
 let rewardModalInst = null, slotMachineModalInst = null, isCardsLoaded = false, cardsToUpgradeQueue = [];
 let serveurSauvegardeTerminee = false;
