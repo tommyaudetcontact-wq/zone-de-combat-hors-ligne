@@ -2,7 +2,7 @@
  * zonedecombathorsligne.js - Logique globale du match et gestion RPG (Hors Pouvoirs)
  */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzKgKRkfVyQuNCrc0T13iH1orPFeWIZAK4kB_emnRFimN-ae_HzISIqUzZ_g1aWgPwHjg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxQIa8HMSBDhGczlwVmINFSyZp_hSuEcXEzB5r7_5KdwEcQVn00VKGLO_0rQVN8hjYx/exec";
 let currentUser = null, selectedTeamIds = [], myCollection = [];
 let rewardModalInst = null, slotMachineModalInst = null, isCardsLoaded = false, cardsToUpgradeQueue = [];
 let serveurSauvegardeTerminee = false;
@@ -448,26 +448,18 @@ function declencherFinDeMatch() {
 
     let deckString = localMatch.deckJ1.join(','); let gainGlobalXp = vainqueurEstJoueur ? 10 : 0;
     
-    // 1. Attribution de l'XP globale au compte joueur
+    // 1. Attribution de l'XP globale (Ton script GS enregistre déjà la carte cadeau ici en arrière-plan)
     fetch(`${API_URL}?action=attribuerXpHorsLigne&username=${encodeURIComponent(currentUser)}&xp=${gainGlobalXp}`)
     .then(res => res.json()).then(data => {
         if(data && data.levelUp && data.nouvelleCarte) {
-            // Affichage visuel dans le pop-up
+            // Affichage visuel uniquement dans l'interface
             document.getElementById('rewardCardImg').src = `https://images.pokemontcg.io/swsh8/${data.nouvelleCarte}_hires.png`;
             document.getElementById('levelUpSection').classList.remove('d-none');
-
-            // --- SAUVEGARDE EFFECTIVE DE LA CARTE DANS TA COLLECTION ---
-            fetch(`${API_URL}?action=ajouterCarteCollection&username=${encodeURIComponent(currentUser)}&cardId=swsh8-${data.nouvelleCarte}`)
-            .then(res => res.json())
-            .then(resCarte => {
-                console.log("Carte officiellement ajoutée à la collection Google Sheets !", resCarte);
-            }).catch(err => console.error("Erreur lors de l'ajout de la carte à la collection:", err));
-
         } else { 
             document.getElementById('levelUpSection').classList.add('d-none'); 
         }
         
-        // 2. Envoi de la mise à jour des stats d'entretien (Fatigue/Propreté)
+        // 2. Envoi des modifications pour la fatigue des cartes
         return fetch(`${API_URL}?action=nettoyerMatchFin&username=${encodeURIComponent(currentUser)}&deck=${deckString}&malus=${malusEntretien}`);
     }).then(() => { 
         serveurSauvegardeTerminee = true; 
