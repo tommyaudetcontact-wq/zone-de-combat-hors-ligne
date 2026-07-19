@@ -448,12 +448,26 @@ function declencherFinDeMatch() {
 
     let deckString = localMatch.deckJ1.join(','); let gainGlobalXp = vainqueurEstJoueur ? 10 : 0;
     
+    // 1. Attribution de l'XP globale au compte joueur
     fetch(`${API_URL}?action=attribuerXpHorsLigne&username=${encodeURIComponent(currentUser)}&xp=${gainGlobalXp}`)
     .then(res => res.json()).then(data => {
         if(data && data.levelUp && data.nouvelleCarte) {
+            // Affichage visuel dans le pop-up
             document.getElementById('rewardCardImg').src = `https://images.pokemontcg.io/swsh8/${data.nouvelleCarte}_hires.png`;
             document.getElementById('levelUpSection').classList.remove('d-none');
-        } else { document.getElementById('levelUpSection').classList.add('d-none'); }
+
+            // --- SAUVEGARDE EFFECTIVE DE LA CARTE DANS TA COLLECTION ---
+            fetch(`${API_URL}?action=ajouterCarteCollection&username=${encodeURIComponent(currentUser)}&cardId=swsh8-${data.nouvelleCarte}`)
+            .then(res => res.json())
+            .then(resCarte => {
+                console.log("Carte officiellement ajoutée à la collection Google Sheets !", resCarte);
+            }).catch(err => console.error("Erreur lors de l'ajout de la carte à la collection:", err));
+
+        } else { 
+            document.getElementById('levelUpSection').classList.add('d-none'); 
+        }
+        
+        // 2. Envoi de la mise à jour des stats d'entretien (Fatigue/Propreté)
         return fetch(`${API_URL}?action=nettoyerMatchFin&username=${encodeURIComponent(currentUser)}&deck=${deckString}&malus=${malusEntretien}`);
     }).then(() => { 
         serveurSauvegardeTerminee = true; 
