@@ -22,7 +22,7 @@ window.addEventListener('DOMContentLoaded', () => {
             s1.innerHTML += `<option value="${m.Nom}">${m.Nom}</option>`;
         });
 
-        // 1. DÉTECTION ET AUTO-CONNEXION VIA LE LOCALSTORAGE
+        // AUTO-CONNEXION VIA LE LOCALSTORAGE
         const savedUser = localStorage.getItem('brawlUser');
         if (savedUser) {
             currentUser = savedUser;
@@ -41,7 +41,6 @@ window.addEventListener('DOMContentLoaded', () => {
 function handleLogin() {
     currentUser = document.getElementById('usernameSelect').value; if(!currentUser) return;
     
-    // Enregistre l'utilisateur en mémoire
     localStorage.setItem('brawlUser', currentUser);
 
     let mFound = listeMembres.find(m => m && m.Nom === currentUser);
@@ -54,7 +53,6 @@ function handleLogin() {
     chargerCartesDuJoueur();
 }
 
-// 2. FONCTION DE DÉCONNEXION MANUELLE
 function handleLogout() {
     localStorage.removeItem('brawlUser');
     localStorage.removeItem('brawlRole');
@@ -158,15 +156,23 @@ function genererStructureMatchDonnees() {
         if (nrg < 30 || cln < 30) cardPvMax = Math.round(cardPvMax * 0.66);
         hpCalculatedDeckJ1.push(cardPvMax);
 
-        let roll = Math.floor(Math.random() * 3) - 1; 
-        let botLvl = myLvl + roll; if(botLvl < 1) botLvl = 1; 
+        let minLvl = Math.max(1, myLvl - 3);
+        let maxLvl = myLvl + 3;
+        let botLvl = Math.floor(Math.random() * (maxLvl - minLvl + 1)) + minLvl;
         botLvlsDeck.push(botLvl);
 
-        let botPvBonus = 0; let botAtqBonus = 0;
+        let botPvBonus = 0; 
+        let botAtqBonus = 0;
         let levelsToDistribute = botLvl - 1;
-        for(let l=0; l < levelsToDistribute; l++) {
-            if(Math.random() < 0.5) botPvBonus += 5; else botAtqBonus += 1;
+
+        for (let l = 0; l < levelsToDistribute; l++) {
+            if (Math.random() < 0.5) {
+                botPvBonus += 2;
+            } else {
+                botAtqBonus += 1;
+            }
         }
+
         hpCalculatedDeckJ2.push(25 + botPvBonus);
         botAtqBonusDeck.push(botAtqBonus);
     });
@@ -254,14 +260,12 @@ function synchroniserVisuelsLocaux() {
     let bMaxDmg = PouvoirManager.ajusterDegats(21 + bBonus, false);
     document.getElementById('enemyAtqText').innerText = `⚔️ ATTAQUE : ${bMinDmg} - ${bMaxDmg}`;
 
-    // BADGE DU BOT EN HAUT À GAUCHE
     const topBadge = document.getElementById('enemyPouvoirTopBadge');
     if(topBadge && localMatch.pouvoirJ2) {
         let st = localMatch.pouvoirJ2Utilise ? "UTILISÉ ✖️" : "PRÊT 🌟";
         topBadge.innerText = `BOT : ${localMatch.pouvoirJ2.nom.toUpperCase()} [${st}]`;
     }
 
-    // MODAL D'INFORMATION COMPLET (i)
     const pBadge = document.getElementById('pouvoirBadge');
     if(localMatch.pouvoirJ1) {
         let stJ1 = localMatch.pouvoirJ1Utilise ? 'UTILISÉ ✖️' : 'DISPONIBLE 🌟';
@@ -363,43 +367,70 @@ function decisionBot() {
     }
 }
 
+// GESTION DES ATTAQUES ET DÉTECTION DES ESQUIVES (CLASSIQUE ET POUVOIR)
 function jouerCoupLocal(type, dmg = 0, element = "") {
-    document.getElementById('btnAttaque').disabled = true; document.getElementById('btnEsquive').disabled = true;
-    let logCoup = ""; let animDepuisMoi = (localMatch.tourA === "J1");
+    document.getElementById('btnAttaque').disabled = true; 
+    document.getElementById('btnEsquive').disabled = true;
+    let logCoup = ""; 
+    let animDepuisMoi = (localMatch.tourA === "J1");
     let contreAttaqueReussie = false;
 
     if (type === 'attaque') {
-        let esquiveActive = animDepuisMoi ? localMatch.esquiveJ2Active : localMatch.esquiveJ1Active;
-        localMatch.esquiveJ1Active = false; localMatch.esquiveJ2Active = false;
+        let esquivePreequipee = animDepuisMoi ? localMatch.esquivePreequipeeJ2 : localMatch.esquivePreequipeeJ1;
+        let esquiveApresReussite = animDepuisMoi ? localMatch.esquiveReussiCeTourJ2 : localMatch.esquiveReussiCeTourJ1;
+        let esquiveClassiqueActive = animDepuisMoi ? localMatch.esquiveJ2Active : localMatch.esquiveJ1Active;
 
-        if (esquiveActive) {
+        if (esquivePreequipee || esquiveApresReussite) {
+            let reussite = false;
+
+            if (esquiveApresReussite) {
+                // Si le 1er coup en rafale a rebondi, le 2ème coup de la rafale rebondit aussi automatiquement !
+                reussite = true;
+            } else {
+                if (animDepuisMoi) localMatch.esquivePreequipeeJ2 = false;
+                else localMatch.esquivePreequipeeJ1 = false;
+
+                reussite = Math.random() < 0.75; // 75% de réussite
+                if (reussite) {
+                    if (animDepuisMoi) localMatch.esquiveReussiCeTourJ2 = true;
+                    else localMatch.esquiveReussiCeTourJ1 = true;
+                }
+            }
+
+            if (reussite) {
+                contreAttaqueReussie = true;
+                executerImpactFin(animDepuisMoi, dmg);
+                logCoup = `⚡ ESQUIVE RÉUSSIE (75%) ! ${animDepuisMoi ? "Le Bot" : "Tu as"} renvoyé l'attaque ! ${animDepuisMoi ? currentUser : "Le Bot"} subit ${dmg} dégâts !`;
+            } else {
+                executerImpactFin(!animDepuisMoi, dmg);
+                if (animDepuisMoi) localMatch.skipNextTurnJ2 = true;
+                else localMatch.skipNextTurnJ1 = true;
+                logCoup = `❌ ESQUIVE ÉCHOUÉE ! ${animDepuisMoi ? "Le Bot" : "Tu"} subis ${dmg} dégâts et le prochain tour sera sauté !`;
+            }
+        } else if (esquiveClassiqueActive) {
+            if (animDepuisMoi) localMatch.esquiveJ2Active = false;
+            else localMatch.esquiveJ1Active = false;
+
             contreAttaqueReussie = true;
-            logCoup = `L'esquive était active ! CONTRE-ATTAQUE ! ${animDepuisMoi ? "Le Bot" : currentUser} subit ${dmg} dégâts ! ⚡`;
             executerImpactFin(animDepuisMoi, dmg);
+            logCoup = `🛡️ ESQUIVE PARFAITE ! ${animDepuisMoi ? "Le Bot" : "Tu as"} esquivé l'attaque ! ${animDepuisMoi ? currentUser : "Le Bot"} subit ${dmg} dégâts !`;
         } else {
             logCoup = `${animDepuisMoi ? currentUser : "Le Bot"} lance une attaque [${element.toUpperCase()}] : ${dmg} dégâts !`;
             executerImpactFin(!animDepuisMoi, dmg);
         }
-        lancerAnimationFX(animDepuisMoi, element, esquiveActive, logCoup, contreAttaqueReussie);
+        
+        lancerAnimationFX(animDepuisMoi, element, contreAttaqueReussie, logCoup, contreAttaqueReussie);
     } else {
         let chance = PouvoirManager.obtenirChanceEsquive(animDepuisMoi);
         let reussiteEsquive = (Math.random() < chance);
         
         if (animDepuisMoi) {
             localMatch.esquiveJ1Active = reussiteEsquive;
-            if (reussiteEsquive && localMatch.toursVifDorJ1 > 0) {
-                finaliserTour("⚡ VIF D'OR RÉUSSI ! Tu gardes la main et peux attaquer immédiatement !", true);
-                return;
-            } else if (!reussiteEsquive && localMatch.toursVifDorJ1 > 0) {
-                localMatch.skipNextTurnJ1 = true;
-                finaliserTour("⚡ VIF D'OR ÉCHOUÉ ! Tu passeras ton prochain tour !", false);
-                return;
-            }
         } else {
             localMatch.esquiveJ2Active = reussiteEsquive;
         }
 
-        finaliserTour(`${animDepuisMoi ? currentUser : "Le Bot"} tente une esquive tactique ! 🛡️`, false);
+        finaliserTour(`${animDepuisMoi ? currentUser : "Le Bot"} tente une esquive tactique classique ! 🛡️`, false);
     }
 }
 
@@ -461,29 +492,28 @@ function finaliserTour(logTexte, etaitUnContre = false) {
         return;
     }
 
-    if (!etaitUnContre) {
-        if (localMatch.tourA === "J1") {
-            // Le joueur 1 vient de terminer son tour
-            if (localMatch.skipNextTurnJ2) {
-                // Le Bot devait passer son tour -> J1 rejoue immédiatement !
-                localMatch.skipNextTurnJ2 = false;
-                localMatch.tourA = "J1";
-                document.getElementById('combatLog').innerText += " (Le tour du Bot est sauté !)";
-            } else {
-                localMatch.tourA = "J2";
-            }
-        } else if (localMatch.tourA === "J2") {
-            // Le Bot vient de terminer son tour
-            if (localMatch.skipNextTurnJ1) {
-                // Le joueur 1 doit passer son tour -> Le Bot rejoue immédiatement !
-                localMatch.skipNextTurnJ1 = false;
-                localMatch.tourA = "J2";
-                document.getElementById('combatLog').innerText += " (Ton tour est sauté !)";
-            } else {
-                localMatch.tourA = "J1";
-            }
-        }
+    localMatch.esquiveReussiCeTourJ1 = false;
+    localMatch.esquiveReussiCeTourJ2 = false;
+
+    let prochainTour;
+    if (etaitUnContre) {
+        // En cas d'esquive réussie, l'attaque a été renvoyée : le défenseur qui a esquivé prend la main et joue !
+        prochainTour = localMatch.tourA === "J1" ? "J2" : "J1";
+    } else {
+        prochainTour = localMatch.tourA === "J1" ? "J2" : "J1";
     }
+
+    if (prochainTour === "J1" && localMatch.skipNextTurnJ1) {
+        localMatch.skipNextTurnJ1 = false;
+        prochainTour = "J2";
+        document.getElementById('combatLog').innerText += " | 🚫 Ton tour est sauté !";
+    } else if (prochainTour === "J2" && localMatch.skipNextTurnJ2) {
+        localMatch.skipNextTurnJ2 = false;
+        prochainTour = "J1";
+        document.getElementById('combatLog').innerText += " | 🚫 Le tour du Bot est sauté !";
+    }
+
+    localMatch.tourA = prochainTour;
     synchroniserVisuelsLocaux();
 }
 
@@ -628,27 +658,88 @@ function executerAnimationShatter(estMoi, idAncienneCarte, idNouvelleCarte) {
     }, 800);
 }
 
+// ANIMATION D'ATTAQUE AVEC EFFET BOOMERANG LORS D'UNE ESQUIVE RÉUSSIE
 function lancerAnimationFX(depuisMoi, element, estUnContre, logTexte, contreAttaqueReussie = false) {
-    const origine = (depuisMoi && !contreAttaqueReussie) || (!depuisMoi && contreAttaqueReussie) ? document.getElementById('myCardAnchor') : document.getElementById('enemyCardAnchor');
-    const cible = (depuisMoi && !contreAttaqueReussie) || (!depuisMoi && contreAttaqueReussie) ? document.getElementById('enemyCardAnchor') : document.getElementById('myCardAnchor');
-    const cibleCardNode = (depuisMoi && !contreAttaqueReussie) || (!depuisMoi && contreAttaqueReussie) ? document.getElementById('enemyFighterCardNode') : document.getElementById('myFighterCardNode');
+    const origine = depuisMoi ? document.getElementById('myCardAnchor') : document.getElementById('enemyCardAnchor');
+    const cible = depuisMoi ? document.getElementById('enemyCardAnchor') : document.getElementById('myCardAnchor');
     
     if (!origine || !cible) return;
-    const rOrigine = origine.getBoundingClientRect(); const rCible = cible.getBoundingClientRect();
+    const rOrigine = origine.getBoundingClientRect(); 
+    const rCible = cible.getBoundingClientRect();
+    
     let emoji = '🔥', colorFX = 'var(--feu-color)';
     if (element === 'eau') { emoji = '💧'; colorFX = 'var(--eau-color)'; }
     else if (element === 'eclair') { emoji = '⚡'; colorFX = 'var(--eclair-color)'; }
     else if (element === 'feuille') { emoji = '🍃'; colorFX = 'var(--feuille-color)'; }
     
-    const fx = document.createElement('div'); fx.className = 'fx-projectile'; fx.innerText = emoji;
-    fx.style.left = `${rOrigine.left + (rOrigine.width / 2) - 25}px`; fx.style.top = `${rOrigine.top + (rOrigine.height / 2) - 25}px`;
+    const fx = document.createElement('div'); 
+    fx.className = 'fx-projectile'; 
+    fx.innerText = emoji;
+    
+    const startX = rOrigine.left + (rOrigine.width / 2) - 25;
+    const startY = rOrigine.top + (rOrigine.height / 2) - 25;
+    const targetX = rCible.left + (rCible.width / 2) - 25;
+    const targetY = rCible.top + (rCible.height / 2) - 25;
+
+    fx.style.left = `${startX}px`; 
+    fx.style.top = `${startY}px`;
     document.body.appendChild(fx);
-    setTimeout(() => { fx.style.left = `${rCible.left + (rCible.width / 2) - 25}px`; fx.style.top = `${rCible.top + (rCible.height / 2) - 25}px`; fx.style.transform = "scale(1.7) rotate(360deg)"; }, 50);
-    setTimeout(() => { 
-        fx.remove(); genererExplosionParticules(rCible.left + (rCible.width / 2), rCible.top + (rCible.height / 2), colorFX); 
-        cibleCardNode.classList.add('shake-card'); setTimeout(() => { cibleCardNode.classList.remove('shake-card'); }, 400); 
-        finaliserTour(logTexte, contreAttaqueReussie);
-    }, 750);
+
+    if (contreAttaqueReussie) {
+        // ANIMATION BOOMERANG :
+        // 1. Avance jusqu'à 85% de la carte ennemie
+        const midX = startX + (targetX - startX) * 0.85;
+        const midY = startY + (targetY - startY) * 0.85;
+
+        setTimeout(() => {
+            fx.style.transition = "all 0.38s cubic-bezier(0.25, 1, 0.5, 1)";
+            fx.style.left = `${midX}px`;
+            fx.style.top = `${midY}px`;
+            fx.style.transform = "scale(1.4) rotate(180deg)";
+        }, 40);
+
+        // 2. Demi-tour Boomerang vers l'attaquant !
+        setTimeout(() => {
+            fx.style.transition = "all 0.38s cubic-bezier(0.5, 0, 0.75, 0)";
+            fx.style.left = `${startX}px`;
+            fx.style.top = `${startY}px`;
+            fx.style.transform = "scale(1.9) rotate(720deg)";
+        }, 420);
+
+        // 3. Impact et dégâts sur l'attaquant
+        setTimeout(() => {
+            fx.remove();
+            genererExplosionParticules(startX + 25, startY + 25, colorFX);
+            
+            const attaquantCardNode = depuisMoi ? document.getElementById('myFighterCardNode') : document.getElementById('enemyFighterCardNode');
+            if (attaquantCardNode) {
+                attaquantCardNode.classList.add('shake-card');
+                setTimeout(() => { attaquantCardNode.classList.remove('shake-card'); }, 400);
+            }
+            finaliserTour(logTexte, true);
+        }, 820);
+
+    } else {
+        // ATTAQUE STANDARD
+        setTimeout(() => { 
+            fx.style.transition = "all 0.65s cubic-bezier(0.25, 1, 0.5, 1)";
+            fx.style.left = `${targetX}px`; 
+            fx.style.top = `${targetY}px`; 
+            fx.style.transform = "scale(1.7) rotate(360deg)"; 
+        }, 50);
+
+        setTimeout(() => { 
+            fx.remove(); 
+            genererExplosionParticules(targetX + 25, targetY + 25, colorFX); 
+            
+            const cibleCardNode = depuisMoi ? document.getElementById('enemyFighterCardNode') : document.getElementById('myFighterCardNode');
+            if (cibleCardNode) {
+                cibleCardNode.classList.add('shake-card');
+                setTimeout(() => { cibleCardNode.classList.remove('shake-card'); }, 400);
+            }
+            finaliserTour(logTexte, false);
+        }, 720);
+    }
 }
 
 function genererExplosionParticules(centerX, centerY, couleur) {
