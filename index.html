@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zone de Combat - Mode Bot & Multi</title>
+    <title>Arène de Combat - Mode Solo & Multijoueur</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -59,7 +59,7 @@
         
         #battlePhase .pokemon-card-wrapper { flex: 1; min-height: 0; height: 45%; max-height: 110px; width: auto; border-color: var(--neon-green); }
         .zone-actions-bas { display: flex; gap: 8px; width: 100%; padding-bottom: env(safe-area-inset-bottom, 2px); flex-shrink: 0; }
-        .zone-actions-bas .brawl-btn { flex: 1; font-size: 1.1rem; padding: 8px 0; border-radius: 12px; }
+        .zone-actions-bas .brawl-btn { flex: 1; font-size: 1.2rem; padding: 12px 0; border-radius: 14px; }
         .pokemon-card-img { height: 100%; width: 100%; object-fit: contain; border-radius: 6px; display: block; }
 
         .hp-bar-container { background: #222; border: 3px solid #000; border-radius: 8px; height: 18px; width: 65%; position: relative; overflow: hidden; margin-bottom: 2px; }
@@ -79,9 +79,9 @@
         .brawl-banner-text { font-family: 'Luckiest Guy', cursive; font-size: 2.5rem; text-align: center; -webkit-text-stroke: 2px #000; }
         .banner-moi { color: var(--brawl-yellow); } .banner-adversaire { color: #FF3333; }
         
-        .slot-box { background: #111; border: 3px solid #333; border-radius: 15px; padding: 15px; min-height: 90px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 900; }
-        .slot-rolling { animation: slotBlur 0.1s infinite linear; }
-        @keyframes slotBlur { 0% { filter: blur(1px); } 50% { filter: blur(2px); } 100% { filter: blur(1px); } }
+        .modal-xp-container { background: #111; border: 2px solid #444; border-radius: 10px; height: 22px; position: relative; overflow: hidden; }
+        .modal-xp-bar { background: linear-gradient(to right, #00A6FF, #00FFCC); height: 100%; width: 0%; transition: width 1s ease-in-out; }
+        .modal-xp-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 0.75rem; font-weight: 900; color: #fff; text-shadow: 1px 1px 2px #000; }
     </style>
 </head>
 <body>
@@ -145,10 +145,9 @@
     </div>
 
     <div id="battlePhase" class="d-none">
-        <!-- BOUTON [ i ] EN HAUT À DROITE -->
-<button class="position-absolute top-0 end-0 m-2 btn btn-warning fw-bold brawl-font-sm" data-bs-toggle="modal" data-bs-target="#infoPouvoirsModal" style="z-index: 999; border: 2px solid #000; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">i</button>
-        <div id="enemyPouvoirTopBadge" class="position-absolute top-0 start-0 m-2 badge bg-dark text-white brawl-font-sm" style="border: 2px solid #ffffff; z-index: 999; font-size: 0.85rem;">ADVERSAIRE : ???</div>
-        <button class="position-absolute top-0 end-0 m-2 btn btn-info-brawl" data-bs-toggle="modal" data-bs-target="#infoPouvoirsModal">i</button>
+        <!-- BOUTON [ i ] DES RÈGLES DU JEU -->
+        <button class="position-absolute top-0 end-0 m-2 btn btn-warning fw-bold brawl-font-sm" data-bs-toggle="modal" data-bs-target="#infoReglesModal" style="z-index: 999; border: 2px solid #000; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">i</button>
+        
         <div id="brawlTurnBanner" class="brawl-banner-container"><div id="brawlBannerText" class="brawl-banner-text">À TON TOUR ! 🔥</div></div>
 
         <!-- ZONE ENNEMI -->
@@ -171,128 +170,100 @@
             <div class="pokemon-card-wrapper mt-1" id="myCardAnchor"><img id="playerFighterImg" src="" class="pokemon-card-img"></div>
             <div id="playerMiniDeck" class="d-flex justify-content-center mt-1"></div>
             <h5 class="brawl-font-sm text-success mt-1 mb-0" id="battlePlayerName">MOI</h5>
-            <div id="cardBattleStatusText" class="fw-bold text-center small" style="font-size: 0.75rem;"></div>
         </div>
         
-        <div id="actionControls" class="zone-actions-bas d-flex flex-wrap gap-2">
+        <!-- BOUTONS D'ACTION (SANS BOUTON DE POUVOIR) -->
+        <div id="actionControls" class="zone-actions-bas d-flex gap-2">
             <button id="btnAttaque" onclick="preparerAttaque()" class="btn brawl-btn btn-orange flex-fill">ATTAQUE ⚔️</button>
             <button id="btnEsquive" onclick="jouerCoupLocal('esquive')" class="btn brawl-btn btn-blue flex-fill">ESQUIVE 🛡️</button>
-            <button id="btnPouvoirSpecial" onclick="activerPouvoirManuel()" class="btn brawl-btn btn-pink w-100 mt-1 d-none">UTILISER LE POUVOIR 🌟</button>
         </div>
     </div>
 
-    <!-- MODAL SLOT MACHINE -->
-    <div class="modal fade" id="slotMachineModal" data-bs-backdrop="static" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark border-warning p-4 text-center text-white" style="border: 6px solid var(--brawl-yellow); border-radius:25px;">
-                <h2 class="brawl-font text-warning mb-3" style="font-size: 2.3rem;">🎰 POUVOIRS ALÉATOIRES 🎰</h2>
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <div class="small fw-bold text-success mb-1">TON POUVOIR</div>
-                        <div id="slotPlayer" class="slot-box brawl-font text-wrap text-center">???</div>
-                    </div>
-                    <div class="col-6">
-                        <div class="small fw-bold text-light mb-1">ADVERSAIRE</div>
-                        <div id="slotBot" class="slot-box brawl-font text-wrap text-center">???</div>
-                    </div>
-                </div>
-                <div id="slotDesc" class="fw-bold text-light small bg-black/40 p-2 rounded border border-secondary">Attribution des capacités spéciales...</div>
-                <button id="btnStartAfterSlot" onclick="PouvoirManager.fermerSlotEtLancerCombat()" class="btn brawl-btn btn-green w-100 py-3 mt-3 fs-5 d-none">ENTRER DANS L'ARÈNE ⚔️</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL RÉSULTAT RPG -->
-    <div class="modal fade" id="rewardModal" data-bs-backdrop="static" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark border-success p-4 text-center text-white" style="border: 6px solid var(--brawl-green); border-radius:25px;">
-                <h1 class="brawl-font text-warning mb-1" style="font-size: 3.2rem;" id="rewardTitle">FIN DU COMBAT</h1>
-                <p class="fs-4 text-white font-monospace fw-bold mb-3" id="rewardXpText">+0 XP Gagné</p>
-                <h5 class="brawl-font text-start text-warning mb-2" style="font-size:1.1rem;">📈 EXPÉRIENCE DES CARTES (+10 XP) :</h5>
-                <div id="cardsXpSummary" class="text-start mb-4 bg-black/50 p-3 rounded-3 border border-secondary"></div>
-
-                <div id="levelUpSection" class="d-none my-3 p-3 bg-black border border-warning rounded">
-                    <h3 class="brawl-font text-danger">🎉 COMPTE LEVEL UP !</h3>
-                    <p class="small text-warning">Tu gagnes cette carte cadeau :</p>
-                    <div style="max-width: 140px; display:inline-block;"><img id="rewardCardImg" src="" class="img-fluid rounded border border-white"></div>
-                </div>
-
-                <div id="cardLevelUpChoiceBlock" class="d-none p-3 bg-black border-danger border-4 rounded-3 text-center mb-2">
-                    <h4 class="brawl-font text-danger mb-1">⭐ CARTE UPGRADE ! ⭐</h4>
-                    <p class="small text-light mb-2" id="lvlUpCardNameTxt">Amélioration définitive :</p>
-                    <div class="mb-3 mx-auto" style="max-width: 120px; aspect-ratio: 5/7; border: 3px solid var(--brawl-yellow); border-radius: 8px; overflow: hidden;"><img id="lvlUpCardPreviewImg" src="" style="width: 100%; height: 100%; object-fit: contain;"></div>
-                    <div class="d-flex gap-3 justify-content-center">
-                        <button onclick="envoyerUpgradeChoix('atq')" class="btn brawl-btn btn-orange px-3 py-1 fs-6">⚔️ +1 ATTAQUE</button>
-                        <button onclick="envoyerUpgradeChoix('pv')" class="btn brawl-btn btn-green px-3 py-1 fs-6">🩸 +2 PV</button>
-                    </div>
-                </div>
-
-                <div class="d-flex flex-column gap-2 w-100 mt-2">
-                    <button id="btnLobbyQuit" onclick="recommencerNouvellePartie()" class="btn brawl-btn btn-yellow py-3 px-5 w-100" disabled>RETOUR AU MENU 🕹️</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODALE DEMANDE DE MATCH REVANCHE -->
-<div class="modal fade" id="rematchRequestModal" data-bs-backdrop="static" tabindex="-1">
+   <!-- MODAL RÉSULTAT -->
+<div class="modal fade" id="rewardModal" data-bs-backdrop="static" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content bg-dark border-warning p-4 text-center text-white" style="border: 5px solid var(--brawl-yellow); border-radius:25px;">
-            <h3 class="brawl-font text-warning mb-2">MATCH REVANCHE !</h3>
-            <p class="fs-5 mb-4">Ton adversaire te propose de rejouer avec le même deck ! Acceptes-tu le duel ?</p>
-            <div class="d-flex gap-3 justify-content-center">
-                <button onclick="repondreRematch(true)" class="btn brawl-btn btn-green px-4 py-2">OUI ⚔️</button>
-                <button onclick="repondreRematch(false)" class="btn brawl-btn btn-pink px-4 py-2">NON 🚪</button>
+        <div class="modal-content bg-dark border-success p-4 text-center text-white" style="border: 6px solid var(--brawl-green); border-radius:25px;">
+            <h1 class="brawl-font text-warning mb-1" style="font-size: 3.2rem;" id="rewardTitle">FIN DU COMBAT</h1>
+            <p class="fs-4 text-white font-monospace fw-bold mb-3" id="rewardXpText">+0 XP Gagné</p>
+            
+            <h5 class="brawl-font text-start text-warning mb-2" style="font-size:1.1rem;">📈 EXPÉRIENCE DES CARTES (+10 XP) :</h5>
+            <div id="cardsXpSummary" class="text-start mb-3 bg-black/50 p-3 rounded-3 border border-secondary"></div>
+
+<!-- SECTION RECOMPENSE LEVEL UP JOUEUR -->
+<div id="levelUpSection" class="d-none my-3 p-3 bg-black border border-warning rounded text-center">
+    <h3 class="brawl-font text-danger mb-1">🎉 LEVEL UP DE TON COMPTE !</h3>
+    <p class="small text-warning mb-2">Tu débloques une nouvelle carte cadeau :</p>
+    <div style="width: 140px; aspect-ratio: 5/7; display:inline-block;" class="pokemon-card-wrapper border border-white rounded overflow-hidden shadow">
+        <img id="rewardCardImg" src="" style="width: 100%; height: 100%; object-fit: contain; display: block;">
+    </div>
+    <h4 class="brawl-font text-white mt-2" id="rewardCardNameTxt">NOUVELLE CARTE</h4>
+</div>
+
+            <div id="cardLevelUpChoiceBlock" class="d-none p-3 bg-black border-danger border-4 rounded-3 text-center mb-2">
+                <h4 class="brawl-font text-danger mb-1">⭐ CARTE UPGRADE ! ⭐</h4>
+                <p class="small text-light mb-2" id="lvlUpCardNameTxt">Amélioration définitive :</p>
+                <div class="mb-3 mx-auto" style="max-width: 120px; aspect-ratio: 5/7; border: 3px solid var(--brawl-yellow); border-radius: 8px; overflow: hidden;">
+                    <img id="lvlUpCardPreviewImg" src="" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+                <div class="d-flex gap-3 justify-content-center">
+                    <button onclick="envoyerUpgradeChoix('atq')" class="btn brawl-btn btn-orange px-3 py-1 fs-6">⚔️ +1 ATTAQUE</button>
+                    <button onclick="envoyerUpgradeChoix('pv')" class="btn brawl-btn btn-green px-3 py-1 fs-6">🩸 +2 PV</button>
+                </div>
+            </div>
+
+            <div class="d-flex flex-column gap-2 w-100 mt-2">
+                <button id="btnRematchSameDeck" onclick="rejouerMemeDeck()" class="btn brawl-btn btn-green py-3 px-5 w-100">REJOUER (MÊME DECK) ⚔️</button>
+                <button id="btnLobbyQuit" onclick="recommencerNouvellePartie()" class="btn brawl-btn btn-yellow py-3 px-5 w-100">RETOUR AU MENU 🕹️</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODALE D'INFORMATION DES POUVOIRS [ i ] -->
-<div class="modal fade" id="infoPouvoirsModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content bg-dark border-warning p-4 text-white" style="border: 5px solid var(--brawl-yellow); border-radius:25px;">
-            <div class="modal-header border-0 pb-0">
-                <h3 class="brawl-font text-warning mb-0">📖 GUIDE DES POUVOIRS</h3>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-start small">
-                <p class="text-muted mb-3">Voici la description de tous les pouvoirs de l'arène attribués au hasard pour le match :</p>
-                <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
-                    <strong class="text-warning">💥 Dernier Souffle :</strong> Ta carte gagne un boost de 25% de ses PV totaux et de ses attaques pendant 2 tours.
+    <!-- MODAL DEMANDE REVANCHE MULTIJOUEUR -->
+    <div class="modal fade" id="rematchRequestModal" data-bs-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-warning p-4 text-center text-white" style="border: 5px solid var(--brawl-yellow); border-radius:25px;">
+                <h3 class="brawl-font text-warning mb-2">MATCH REVANCHE !</h3>
+                <p class="fs-5 mb-4">Ton adversaire te propose de rejouer avec le même deck ! Acceptes-tu le duel ?</p>
+                <div class="d-flex gap-3 justify-content-center">
+                    <button onclick="repondreRematch(true)" class="btn brawl-btn btn-green px-4 py-2">OUI ⚔️</button>
+                    <button onclick="repondreRematch(false)" class="btn brawl-btn btn-pink px-4 py-2">NON 🚪</button>
                 </div>
-                <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
-                    <strong class="text-warning">⚡ Vif d'or / Esquive :</strong> Prépare une esquive à 75% de réussite. Si elle réussit, l'attaque ennemie (ou les 2 coups en rafale) rebondit sur l'adversaire et c'est à toi de rejouer !
-                </div>
-                <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
-                    <strong class="text-warning">🩹 À l'agonie :</strong> La carte en jeu ne peut pas être mise K.O. avant d'avoir atteint 1 PV, mais subit un malus de -25% d'attaque.
-                </div>
-                <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
-                    <strong class="text-warning">✨ Soins :</strong> Soigne instantanément ta carte actuelle de 50% de ses PV totaux.
-                </div>
-                <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
-                    <strong class="text-warning">🔄 Switch :</strong> Intervertit immédiatement ta carte actuelle avec celle de ton adversaire.
-                </div>
-                <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
-                    <strong class="text-warning">💀 Outre Tombe :</strong> Fait revivre une carte K.O., mais toutes tes cartes subissent un malus permanent de -25% de PV et d'attaque.
-                </div>
-                <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
-                    <strong class="text-warning">💥 En Rafale :</strong> Attaque 2 fois de suite pendant ton tour, mais ton prochain tour est sauté.
-                </div>
-                <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
-                    <strong class="text-warning">⚡ Méga Attaque :</strong> Inflige une frappe colossale (+50% de dégâts), mais fait passer ton prochain tour et réduit l'attaque de tes autres cartes de 25%.
-                </div>
-            </div>
-            <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn brawl-btn btn-yellow w-100 py-2" data-bs-dismiss="modal">COMPRIS ! 🕹️</button>
             </div>
         </div>
     </div>
-</div>
+
+    <!-- MODAL GUIDE ET RÈGLES DU JEU [ i ] -->
+    <div class="modal fade" id="infoReglesModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content bg-dark border-warning p-4 text-white" style="border: 5px solid var(--brawl-yellow); border-radius:25px;">
+                <div class="modal-header border-0 pb-0">
+                    <h3 class="brawl-font text-warning mb-0">📖 RÈGLES DU COMBAT</h3>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-start small mt-2">
+                    <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
+                        <strong class="text-warning">⚔️ Attaque :</strong> Inflige des dégâts directs à la carte adverse en jeu selon le niveau et l'usure de ta carte.
+                    </div>
+                    <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
+                        <strong class="text-warning">🛡️ Esquive (50%) :</strong> Prépare une posture d'esquive pour le prochain coup. Si l'adversaire attaque et que l'esquive réussit, l'attaque fait un effet boomerang et se retourne contre lui ! Tu gardes/prends alors la main pour attaquer.
+                    </div>
+                    <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
+                        <strong class="text-warning">⚠️ Limite d'Esquive :</strong> Il est impossible d'effectuer deux esquives consécutives. Tu dois au moins effectuer une attaque avant de pouvoir retenter une esquive.
+                    </div>
+                    <div class="mb-3 p-2 bg-black/40 rounded border border-secondary">
+                        <strong class="text-warning">📈 XP & Revanche :</strong> Chaque victoire te rapporte +10 XP personnel et fait évoluer tes cartes. L'usure/fatigue d'énergie et de propreté reste comptabilisée si tu fais une revanche avec le même deck.
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn brawl-btn btn-yellow w-100 py-2" data-bs-dismiss="modal">COMPRIS ! 🕹️</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- CHARGEMENT DES FICHIERS JS -->
     <script src="multiplayer.js"></script>
-    <script src="pouvoir.js"></script>
     <script src="combathorsligne.js"></script>
 </body>
 </html>
