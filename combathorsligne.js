@@ -21,12 +21,29 @@ window.addEventListener('DOMContentLoaded', () => {
         listeMembres.filter(m => m && m.Nom !== 'Admin').forEach(m => {
             s1.innerHTML += `<option value="${m.Nom}">${m.Nom}</option>`;
         });
+
+        // 1. DÉTECTION ET AUTO-CONNEXION VIA LE LOCALSTORAGE
+        const savedUser = localStorage.getItem('brawlUser');
+        if (savedUser) {
+            currentUser = savedUser;
+            let mFound = listeMembres.find(m => m && m.Nom === currentUser);
+            currentUserPref = mFound ? (mFound.Type_Recompense || mFound.Preference_Cartes || "les_deux") : "les_deux";
+
+            document.getElementById('loginPage').classList.add('d-none'); 
+            document.getElementById('headerBar').classList.remove('d-none');
+            document.getElementById('lobbyPhase').classList.remove('d-none');
+            document.getElementById('displayUsername').innerText = currentUser.toUpperCase();
+            chargerCartesDuJoueur();
+        }
     });
 });
 
 function handleLogin() {
     currentUser = document.getElementById('usernameSelect').value; if(!currentUser) return;
     
+    // Enregistre l'utilisateur en mémoire
+    localStorage.setItem('brawlUser', currentUser);
+
     let mFound = listeMembres.find(m => m && m.Nom === currentUser);
     currentUserPref = mFound ? (mFound.Type_Recompense || mFound.Preference_Cartes || "les_deux") : "les_deux";
 
@@ -35,6 +52,13 @@ function handleLogin() {
     document.getElementById('lobbyPhase').classList.remove('d-none');
     document.getElementById('displayUsername').innerText = currentUser.toUpperCase();
     chargerCartesDuJoueur();
+}
+
+// 2. FONCTION DE DÉCONNEXION MANUELLE
+function handleLogout() {
+    localStorage.removeItem('brawlUser');
+    localStorage.removeItem('brawlRole');
+    window.location.href = "https://tommyaudetcontact-wq.github.io/brawlTasks2.0/";
 }
 
 function chargerCartesDuJoueur() {
@@ -230,7 +254,7 @@ function synchroniserVisuelsLocaux() {
     let bMaxDmg = PouvoirManager.ajusterDegats(21 + bBonus, false);
     document.getElementById('enemyAtqText').innerText = `⚔️ ATTAQUE : ${bMinDmg} - ${bMaxDmg}`;
 
-    // AFFICHAGE DU BADGE DU BOT EN HAUT À GAUCHE (EN BLANC)
+    // BADGE DU BOT EN HAUT À GAUCHE
     const topBadge = document.getElementById('enemyPouvoirTopBadge');
     if(topBadge && localMatch.pouvoirJ2) {
         let st = localMatch.pouvoirJ2Utilise ? "UTILISÉ ✖️" : "PRÊT 🌟";
