@@ -1,5 +1,5 @@
 // ========================================================
-// COMBATHORSLIGNE.JS : MOTEUR DE COMBAT SÉCURISÉ & CORRIGÉ
+// COMBATHORSLIGNE.JS : MOTEUR DE JEU SOLO SANS POUVOIRS
 // ========================================================
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzKgKRkfVyQuNCrc0T13iH1orPFeWIZAK4kB_emnRFimN-ae_HzISIqUzZ_g1aWgPwHjg/exec";
@@ -14,12 +14,20 @@ let opponentCardImgsMap = {};
 let localMatch = {
     myRole: "host", 
     tourA: "host",
-    enemyName: "ADVERSAIRE"
+    enemyName: "ROBOT-BOT 🤖",
+    esquiveActiveHost: false,
+    esquiveActiveGuest: false,
+    derniereActionClassiqueEsqJ1: false,
+    botAAssayeEsquive: false
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-    rewardModalInst = new bootstrap.Modal(document.getElementById('rewardModal'));
-    rematchModalInst = new bootstrap.Modal(document.getElementById('rematchRequestModal'));
+    const rewardEl = document.getElementById('rewardModal');
+    if (rewardEl) rewardModalInst = bootstrap.Modal.getOrCreateInstance(rewardEl);
+
+    const rematchEl = document.getElementById('rematchRequestModal');
+    if (rematchEl) rematchModalInst = bootstrap.Modal.getOrCreateInstance(rematchEl);
+
     const s1 = document.getElementById('usernameSelect');
     if (s1) s1.innerHTML = '<option value="">Connexion au serveur...</option>';
     
@@ -38,14 +46,9 @@ window.addEventListener('DOMContentLoaded', () => {
             let mFound = listeMembres.find(m => m && m.Nom === currentUser);
             currentUserPref = mFound ? (mFound.Type_Recompense || mFound.Preference_Cartes || "les_deux") : "les_deux";
 
-            let loginPage = document.getElementById('loginPage');
-            if (loginPage) loginPage.classList.add('d-none'); 
-            
-            let headerBar = document.getElementById('headerBar');
-            if (headerBar) headerBar.classList.remove('d-none');
-            
-            let lobbyPhase = document.getElementById('lobbyPhase');
-            if (lobbyPhase) lobbyPhase.classList.remove('d-none');
+            document.getElementById('loginPage')?.classList.add('d-none'); 
+            document.getElementById('headerBar')?.classList.remove('d-none');
+            document.getElementById('lobbyPhase')?.classList.remove('d-none'); 
             
             let displayUsername = document.getElementById('displayUsername');
             if (displayUsername) displayUsername.innerText = currentUser.toUpperCase();
@@ -144,9 +147,7 @@ function validerMonDeck() {
         localMatch.myRole = "host";
         localMatch.tourA = "host";
         genererStructureMatchBot();
-        PouvoirManager.declencherTirageSlotMachine(() => {
-            demarrerInterfaceCombat();
-        });
+        demarrerInterfaceCombat();
     } else {
         genererStructureMatchMulti();
         
@@ -227,6 +228,10 @@ function genererStructureMatchBot() {
     localMatch.indexJ2 = 0;
     localMatch.deckJ1 = [...selectedTeamIds];
     localMatch.deckJ2 = botDeck;
+    localMatch.esquiveActiveHost = false;
+    localMatch.esquiveActiveGuest = false;
+    localMatch.derniereActionClassiqueEsqJ1 = false;
+    localMatch.botAAssayeEsquive = false;
 }
 
 function genererStructureMatchMulti() {
@@ -267,6 +272,9 @@ function genererStructureMatchMulti() {
     localMatch.indexJ1 = 0;
     localMatch.indexJ2 = 0;
     localMatch.deckJ1 = [...selectedTeamIds];
+    localMatch.esquiveActiveHost = false;
+    localMatch.esquiveActiveGuest = false;
+    localMatch.derniereActionClassiqueEsqJ1 = false;
 }
 
 function demarrerInterfaceCombat() {
@@ -308,17 +316,6 @@ function rejouerMemeDeck() {
     }
 }
 
-function activerPouvoirManuel() {
-    PouvoirManager.activerPouvoirManuel();
-    if (isMultiplayerMode) {
-        MultiplayerManager.envoyerAction({
-            type: 'POUVOIR_ACTIVATION',
-            pid: localMatch.pouvoirJ1.id,
-            nomPouvoir: localMatch.pouvoirJ1.nom
-        });
-    }
-}
-
 function synchroniserVisuelsLocaux(afficherBandeau = true) {
     let isMyTurn = (localMatch.tourA === localMatch.myRole);
 
@@ -340,54 +337,12 @@ function synchroniserVisuelsLocaux(afficherBandeau = true) {
     }
 
     let pBonus = foundCard ? (parseInt(foundCard.Attaque_Bonus) || 0) : 0;
-    let pMinDmg = PouvoirManager.ajusterDegats(10 + pBonus, true);
-    let pMaxDmg = PouvoirManager.ajusterDegats(21 + pBonus, true);
-    
     let playerAtqText = document.getElementById('playerAtqText');
-    if (playerAtqText) playerAtqText.innerText = `⚔️ ATTAQUE : ${pMinDmg} - ${pMaxDmg}`;
+    if (playerAtqText) playerAtqText.innerText = `⚔️ ATTAQUE : ${10 + pBonus} - ${21 + pBonus}`;
 
     let bBonus = localMatch.botAtqBonusDeck ? (localMatch.botAtqBonusDeck[sonIndexVis] || 0) : 0;
-    let bMinDmg = PouvoirManager.ajusterDegats(10 + bBonus, false);
-    let bMaxDmg = PouvoirManager.ajusterDegats(21 + bBonus, false);
-    
     let enemyAtqText = document.getElementById('enemyAtqText');
-    if (enemyAtqText) enemyAtqText.innerText = `⚔️ ATTAQUE : ${bMinDmg} - ${bMaxDmg}`;
-
-    const topBadge = document.getElementById('enemyPouvoirTopBadge');
-    if(topBadge && localMatch.pouvoirJ2) {
-        let st = localMatch.pouvoirJ2Utilise ? "UTILISÉ ✖️" : "PRÊT 🌟";
-        topBadge.innerText = `${(localMatch.enemyName || 'ADVERSAIRE').toUpperCase()} : ${localMatch.pouvoirJ2.nom.toUpperCase()} [${st}]`;
-    }
-
-    const pBadge = document.getElementById('pouvoirBadge');
-    if(pBadge && localMatch.pouvoirJ1) {
-        let stJ1 = localMatch.pouvoirJ1Utilise ? 'UTILISÉ ✖️' : 'DISPONIBLE 🌟';
-        pBadge.innerText = `TON POUVOIR : ${localMatch.pouvoirJ1.nom.toUpperCase()} (${stJ1})\n\n${localMatch.pouvoirJ1.desc}`;
-    }
-    const eBadge = document.getElementById('enemyPouvoirBadge');
-    if(eBadge && localMatch.pouvoirJ2) {
-        let stJ2 = localMatch.pouvoirJ2Utilise ? 'UTILISÉ ✖️' : 'DISPONIBLE 🌟';
-        eBadge.innerText = `POUVOIR ADVERSE : ${localMatch.pouvoirJ2.nom.toUpperCase()} (${stJ2})\n\n${localMatch.pouvoirJ2.desc}`;
-    }
-
-    const btnPouvoir = document.getElementById('btnPouvoirSpecial');
-    if(btnPouvoir) {
-        if(localMatch.pouvoirJ1) {
-            btnPouvoir.classList.remove('d-none');
-            let estBloque = localMatch.toursPouvoirBloqueJoueur > 0;
-            btnPouvoir.disabled = !isMyTurn || localMatch.pouvoirJ1Utilise || localMatch.statut !== "actif" || estBloque;
-            
-            if (estBloque) {
-                btnPouvoir.innerText = "POUVOIR BLOQUÉ 🚫";
-            } else if (localMatch.pouvoirJ1Utilise) {
-                btnPouvoir.innerText = "POUVOIR UTILISÉ ✖️";
-            } else {
-                btnPouvoir.innerText = `POUVOIR : ${localMatch.pouvoirJ1.nom.toUpperCase()} 🌟`;
-            }
-        } else {
-            btnPouvoir.classList.add('d-none');
-        }
-    }
+    if (enemyAtqText) enemyAtqText.innerText = `⚔️ ATTAQUE : ${10 + bBonus} - ${21 + bBonus}`;
 
     if (afficherBandeau) {
         animerBandeauTour(localMatch.tourA);
@@ -408,19 +363,22 @@ function synchroniserVisuelsLocaux(afficherBandeau = true) {
     if (playerHpBar) playerHpBar.style.width = Math.max(0, (monPvAffiche / monPvMaxAffiche * 100)) + "%"; 
     
     let playerHpText = document.getElementById('playerHpText');
-    if (playerHpText) playerHpText.innerText = `${monPvAffiche} / ${monPvMaxAffiche} PV`;
+    if (playerHpText) playerHpText.innerText = `${Math.max(0, monPvAffiche)} / ${monPvMaxAffiche} PV`;
 
     let enemyHpBar = document.getElementById('enemyHpBar');
     if (enemyHpBar) enemyHpBar.style.width = Math.max(0, (sonPvAffiche / sonPvMaxAffiche * 100)) + "%"; 
     
     let enemyHpText = document.getElementById('enemyHpText');
-    if (enemyHpText) enemyHpText.innerText = `${sonPvAffiche} / ${sonPvMaxAffiche} PV`;
+    if (enemyHpText) enemyHpText.innerText = `${Math.max(0, sonPvAffiche)} / ${sonPvMaxAffiche} PV`;
 
     let btnAtq = document.getElementById('btnAttaque');
     if (btnAtq) btnAtq.disabled = !isMyTurn;
 
+    // BLOQUE DEUX ESQUIVES DE SUITE
     let btnEsq = document.getElementById('btnEsquive');
-    if (btnEsq) btnEsq.disabled = !isMyTurn;
+    if (btnEsq) {
+        btnEsq.disabled = !isMyTurn || localMatch.derniereActionClassiqueEsqJ1;
+    }
 
     const pMini = document.getElementById('playerMiniDeck'); 
     if (pMini) {
@@ -464,107 +422,113 @@ function animerBandeauTour(tourActuel) {
 }
 
 function preparerAttaque() {
+    if (localMatch.tourA !== localMatch.myRole || localMatch.statut !== "actif") return;
+    localMatch.derniereActionClassiqueEsqJ1 = false; // Ré-autorise l'esquive
+
     let monIndexVis = localMatch.indexJ1 >= 3 ? 2 : localMatch.indexJ1;
     let foundCard = myCollection.find(c => (c.Pokemon_API_ID || "").toString() === localMatch.deckJ1[monIndexVis].toString());
     let atqBonus = foundCard ? (parseInt(foundCard.Attaque_Bonus) || 0) : 0;
     let dmg = Math.floor(Math.random() * 12) + 10 + atqBonus;
-    dmg = PouvoirManager.ajusterDegats(dmg, true);
-    
     let elem = ['feu', 'eau', 'eclair', 'feuille'][Math.floor(Math.random() * 4)];
     
-    if (isMultiplayerMode) {
-        MultiplayerManager.envoyerAction({ type: 'COUP_JOUE', actionType: 'attaque', dmg: dmg, element: elem });
-    }
-    jouerCoupLocal('attaque', dmg, elem, false);
+    let roleAttaquant = localMatch.myRole;
+    let roleDefenseur = (roleAttaquant === "host") ? "guest" : "host";
+
+    let defenseurAEquipeEsquive = (roleDefenseur === "host") ? localMatch.esquiveActiveHost : localMatch.esquiveActiveGuest;
+    let reussiteEsquiveResult = defenseurAEquipeEsquive ? (Math.random() < 0.5) : null;
+
+    jouerCoupLocal('attaque', dmg, elem, false, reussiteEsquiveResult);
 }
 
 function decisionBot() {
-    PouvoirManager.analyserEtExecuterPouvoirBot();
-    if(localMatch.statut !== "actif") return; 
+    if (localMatch.statut !== "actif") return; 
 
     let sonIndexVis = localMatch.indexJ2 >= 3 ? 2 : localMatch.indexJ2;
-    if (localMatch.indexJ2 === 2 && localMatch.hpJ2 <= 12 && !localMatch.botAAssayeEsquive) {
+    
+    // STRATÉGIE DU BOT : Tente une esquive si PV <= 12 et n'a pas esquivé au tour précédent
+    if (localMatch.indexJ2 === 2 && localMatch.hpJ2 <= 12 && !localMatch.botAAssayeEsquive && Math.random() < 0.5) {
         localMatch.botAAssayeEsquive = true; 
         jouerCoupLocal('esquive', 0, "", true);
     } else {
+        localMatch.botAAssayeEsquive = false;
         let botAtqBonus = localMatch.botAtqBonusDeck[sonIndexVis];
         let dmg = Math.floor(Math.random() * 12) + 10 + botAtqBonus;
-        dmg = PouvoirManager.ajusterDegats(dmg, false);
         jouerCoupLocal('attaque', dmg, ['feu', 'eau', 'eclair', 'feuille'][Math.floor(Math.random() * 4)], true);
     }
 }
 
-function jouerCoupLocal(type, dmg = 0, element = "", recuParReseau = false) {
+function jouerCoupLocal(type, dmg = 0, element = "", recuParReseau = false, reussiteEsquiveReseau = null) {
     let btnAtq = document.getElementById('btnAttaque');
     if (btnAtq) btnAtq.disabled = true;
     let btnEsq = document.getElementById('btnEsquive');
     if (btnEsq) btnEsq.disabled = true;
 
-    let logCoup = ""; 
+    if (!recuParReseau && isMultiplayerMode && typeof MultiplayerManager !== 'undefined') {
+        MultiplayerManager.envoyerAction({ 
+            type: 'COUP_JOUE', 
+            actionType: type, 
+            dmg: dmg, 
+            element: element,
+            reussiteEsquive: reussiteEsquiveReseau
+        });
+    }
+
     let animDepuisMoi = !recuParReseau;
-    let contreAttaqueReussie = false;
+    let roleAttaquant = recuParReseau ? (localMatch.myRole === "host" ? "guest" : "host") : localMatch.myRole;
+    let roleDefenseur = (roleAttaquant === "host") ? "guest" : "host";
 
     if (type === 'attaque') {
-        let esquivePreequipee = animDepuisMoi ? localMatch.esquivePreequipeeJ2 : localMatch.esquivePreequipeeJ1;
-        let esquiveRafaleActive = animDepuisMoi ? localMatch.esquiveReussiCeTourJ2 : localMatch.esquiveReussiCeTourJ1;
-        let esquiveClassiqueActive = animDepuisMoi ? localMatch.esquiveJ2Active : localMatch.esquiveJ1Active;
-        let attaquantEstEnRafale = animDepuisMoi ? localMatch.rafaleEnCoursJ1 : localMatch.rafaleEnCoursJ2;
+        let defenseurAEquipeEsquive = (roleDefenseur === "host") ? localMatch.esquiveActiveHost : localMatch.esquiveActiveGuest;
 
-        if (esquivePreequipee || esquiveRafaleActive || esquiveClassiqueActive) {
-            let reussite = false;
+        let contreAttaqueReussie = false;
+        let logCoup = "";
 
-            if (esquiveRafaleActive) {
-                reussite = true;
-            } else if (esquiveClassiqueActive) {
-                if (animDepuisMoi) localMatch.esquiveJ2Active = false;
-                else localMatch.esquiveJ1Active = false;
-                reussite = true;
-            } else if (esquivePreequipee) {
-                if (animDepuisMoi) localMatch.esquivePreequipeeJ2 = false;
-                else localMatch.esquivePreequipeeJ1 = false;
-                reussite = Math.random() < 0.75;
-            }
+        if (defenseurAEquipeEsquive) {
+            // Désarme l'esquive
+            if (roleDefenseur === "host") localMatch.esquiveActiveHost = false;
+            else localMatch.esquiveActiveGuest = false;
+
+            // Tirage 50%
+            let reussite = (reussiteEsquiveReseau !== null) ? reussiteEsquiveReseau : (Math.random() < 0.5);
 
             if (reussite) {
                 contreAttaqueReussie = true;
-                if (attaquantEstEnRafale) {
-                    if (animDepuisMoi) localMatch.esquiveReussiCeTourJ2 = true;
-                    else localMatch.esquiveReussiCeTourJ1 = true;
-                }
-                executerImpactFin(animDepuisMoi, dmg);
-                logCoup = `⚡ ESQUIVE RÉUSSIE ! ${animDepuisMoi ? localMatch.enemyName : "Tu as"} renvoyé l'attaque ! ${animDepuisMoi ? currentUser : localMatch.enemyName} subit ${dmg} dégâts !`;
+                // BOOMERANG RÉUSSI : Attaquant subit sa propre attaque
+                executerImpactFinParRole(roleAttaquant, dmg);
+                logCoup = `⚡ ESQUIVE RÉUSSIE (50%) ! ${animDepuisMoi ? localMatch.enemyName : "Tu as"} renvoyé l'attaque ! ${animDepuisMoi ? currentUser : localMatch.enemyName} subit ${dmg} dégâts !`;
             } else {
-                executerImpactFin(!animDepuisMoi, dmg);
-                if (animDepuisMoi) localMatch.skipNextTurnJ2 = true;
-                else localMatch.skipNextTurnJ1 = true;
-                logCoup = `❌ ESQUIVE ÉCHOUÉE ! ${animDepuisMoi ? localMatch.enemyName : "Tu"} subis ${dmg} dégâts et le prochain tour sera sauté !`;
+                // ÉCHEC DE L'ESQUIVE : Le défenseur encaisse
+                executerImpactFinParRole(roleDefenseur, dmg);
+                logCoup = `❌ ESQUIVE ÉCHOUÉE ! ${animDepuisMoi ? localMatch.enemyName : "Tu"} subis ${dmg} dégâts !`;
             }
         } else {
             logCoup = `${animDepuisMoi ? currentUser : localMatch.enemyName} lance une attaque [${element.toUpperCase()}] : ${dmg} dégâts !`;
-            executerImpactFin(!animDepuisMoi, dmg);
+            executerImpactFinParRole(roleDefenseur, dmg);
         }
-        
+
         lancerAnimationFX(animDepuisMoi, element, contreAttaqueReussie, logCoup, contreAttaqueReussie);
     } else {
-        if (!recuParReseau && isMultiplayerMode) {
-            MultiplayerManager.envoyerAction({ type: 'COUP_JOUE', actionType: 'esquive', dmg: 0, element: "" });
-        }
-        let chance = PouvoirManager.obtenirChanceEsquive(animDepuisMoi);
-        let reussiteEsquive = (Math.random() < chance);
-        
-        if (animDepuisMoi) localMatch.esquiveJ1Active = reussiteEsquive;
-        else localMatch.esquiveJ2Active = reussiteEsquive;
+        // ACTION ESQUIVE (50%)
+        localMatch.derniereActionClassiqueEsqJ1 = true;
 
-        finaliserTour(`${animDepuisMoi ? currentUser : localMatch.enemyName} tente une esquive tactique classique ! 🛡️`, false);
+        if (roleAttaquant === "host") localMatch.esquiveActiveHost = true;
+        else localMatch.esquiveActiveGuest = true;
+
+        finaliserTour(`${animDepuisMoi ? currentUser : localMatch.enemyName} prépare une posture d'esquive (50% de chance) 🛡️ !`, false);
     }
+}
+
+function executerImpactFinParRole(roleCible, degats) {
+    let cibleEstJoueurLocal = (roleCible === localMatch.myRole);
+    executerImpactFin(cibleEstJoueurLocal, degats);
 }
 
 function executerImpactFin(cibleEstJoueur, degats) {
     let d = parseInt(degats) || 0;
     if (cibleEstJoueur) {
-        let estMort = PouvoirManager.gererEncaisserDegatsJ1(d);
+        localMatch.hpJ1 -= d;
         localMatch.currentHpDeckJ1[localMatch.indexJ1] = localMatch.hpJ1;
-        if (estMort) {
+        if (localMatch.hpJ1 <= 0) {
             let prochainVivant = localMatch.currentHpDeckJ1.findIndex(hp => hp > 0);
             if(prochainVivant !== -1) {
                 localMatch.indexJ1 = prochainVivant;
@@ -573,9 +537,9 @@ function executerImpactFin(cibleEstJoueur, degats) {
             } else { localMatch.indexJ1 = 3; }
         }
     } else {
-        let estMort = PouvoirManager.gererEncaisserDegatsJ2(d);
+        localMatch.hpJ2 -= d;
         localMatch.currentHpDeckJ2[localMatch.indexJ2] = localMatch.hpJ2;
-        if (estMort) {
+        if (localMatch.hpJ2 <= 0) {
             let prochainVivant = localMatch.currentHpDeckJ2.findIndex(hp => hp > 0);
             if(prochainVivant !== -1) {
                 localMatch.indexJ2 = prochainVivant;
@@ -586,11 +550,22 @@ function executerImpactFin(cibleEstJoueur, degats) {
     }
 }
 
+function passerAuProchainTour(etaitUnContre = false) {
+    let roleActuel = localMatch.tourA;
+    let prochainRole = (roleActuel === "host") ? "guest" : "host";
+
+    if (etaitUnContre) {
+        // APRÈS UN BOOMERANG RÉUSSI : LE DÉFENSEUR GARDE/REÇOIT LE TOUR POUR ATTAQUER
+        prochainRole = (roleActuel === "host") ? "guest" : "host";
+    }
+
+    localMatch.tourA = prochainRole;
+    synchroniserVisuelsLocaux(true);
+}
+
 function finaliserTour(logTexte, etaitUnContre = false) {
     let logBox = document.getElementById('combatLog');
     if (logBox) logBox.innerText = logTexte;
-    
-    PouvoirManager.decrementerTours();
 
     if (localMatch.indexJ1 >= 3 || localMatch.indexJ2 >= 3) {
         localMatch.statut = "termine";
@@ -598,33 +573,7 @@ function finaliserTour(logTexte, etaitUnContre = false) {
         return;
     }
 
-    if (localMatch.rafaleEnCoursJ1) {
-        localMatch.rafaleEnCoursJ1 = false;
-        setTimeout(() => {
-            if (logBox) logBox.innerText = "💥 POUVOIR EN RAFALE : Deuxième frappe consécutive !";
-            preparerAttaque();
-        }, 700);
-        return;
-    }
-
-    localMatch.esquiveReussiCeTourJ1 = false;
-    localMatch.esquiveReussiCeTourJ2 = false;
-
-    let prochainTour = etaitUnContre ? localMatch.tourA : (localMatch.tourA === "host" ? "guest" : "host");
-
-    // CORRECTION DU SKIP NEXT TURN : ALTERNANCE ROBUSTE
-    if (prochainTour === "host" && localMatch.skipNextTurnJ1) {
-        localMatch.skipNextTurnJ1 = false;
-        prochainTour = "guest";
-        if (logBox) logBox.innerText += " | 🚫 Tour de l'hôte sauté !";
-    } else if (prochainTour === "guest" && localMatch.skipNextTurnJ2) {
-        localMatch.skipNextTurnJ2 = false;
-        prochainTour = "host";
-        if (logBox) logBox.innerText += " | 🚫 Tour de l'invité sauté !";
-    }
-
-    localMatch.tourA = prochainTour;
-    synchroniserVisuelsLocaux(true);
+    passerAuProchainTour(etaitUnContre);
 }
 
 function declencherFinDeMatch() {
@@ -640,6 +589,9 @@ function declencherFinDeMatch() {
     const summaryBox = document.getElementById('cardsXpSummary'); 
     if (summaryBox) summaryBox.innerHTML = "";
     
+    const lvlUpSec = document.getElementById('levelUpSection');
+    if (lvlUpSec) lvlUpSec.classList.add('d-none');
+
     cardsToUpgradeQueue = []; 
     serveurSauvegardeTerminee = false; 
     
@@ -693,15 +645,52 @@ function declencherFinDeMatch() {
 
     let deckString = localMatch.deckJ1.join(',');
     
+    // ATTRITION SÉCURISÉE DES XP COMPTE EN VICTOIRE
     fetch(`${API_URL}?action=attribuerXpHorsLigne&username=${encodeURIComponent(currentUser)}&xp=${vainqueurEstJoueur ? 10 : 0}&preference=${encodeURIComponent(currentUserPref)}`)
     .then(res => res.json())
-    .then(data => {
-        if(data && data.levelUp && data.newLevel) {
-            localStorage.setItem('lastKnownLevel_' + currentUser, data.newLevel);
+    .then(async (data) => {
+        let estLevelUp = data && (data.levelUp === true || data.levelUp === "true" || data.levelUp === "TRUE");
+
+        if (estLevelUp) {
+            if (data.newLevel) {
+                localStorage.setItem('lastKnownLevel_' + currentUser, data.newLevel);
+            }
+
+            // RECUPERATION EXACTE DU POKEMON COMMME DANS BRAWL TASKS
+            try {
+                const resColl = await fetch(`${API_URL}?action=getCollection&username=${encodeURIComponent(currentUser)}`);
+                const toutesLesCartes = await resColl.json();
+                const mesCartes = toutesLesCartes.filter(row => {
+                    let fUser = row.Nom_Joueur || row.Nom || row.nom || row.Joueur || row.joueur || "";
+                    return fUser.toString().toLowerCase() === currentUser.toLowerCase();
+                });
+
+                if (mesCartes.length > 0) {
+                    let derniereCarte = mesCartes[mesCartes.length - 1];
+                    let cardName = derniereCarte.Nom_Pokemon || "Nouvelle Carte";
+                    let cardImg = derniereCarte.Image_URL || derniereCarte.Image || ("https://images.pokemontcg.io/swsh8/" + (derniereCarte.Pokemon_API_ID || "").replace("swsh8-", "") + "_hires.png");
+
+                    let rewardImg = document.getElementById('rewardCardImg');
+                    let rewardNameTxt = document.getElementById('rewardCardNameTxt');
+
+                    if (rewardImg) rewardImg.src = cardImg;
+                    if (rewardNameTxt) rewardNameTxt.innerText = cardName.toUpperCase();
+
+                    if (lvlUpSec) lvlUpSec.classList.remove('d-none');
+                }
+            } catch (err) {
+                console.error("Erreur lors de la récupération de la carte cadeau :", err);
+            }
         }
         return fetch(`${API_URL}?action=nettoyerMatchFin&username=${encodeURIComponent(currentUser)}&deck=${deckString}&malus=${malusEntretien}`);
     })
-    .then(() => { serveurSauvegardeTerminee = true; verifierQueueUpgrades(); });
+    .then(() => { serveurSauvegardeTerminee = true; verifierQueueUpgrades(); })
+    .catch(err => {
+        console.error("Erreur fin de match :", err);
+        serveurSauvegardeTerminee = true;
+        verifierQueueUpgrades();
+    });
+
     rewardModalInst.show();
 }
 
