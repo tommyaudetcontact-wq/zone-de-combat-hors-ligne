@@ -1,5 +1,5 @@
 // ========================================================
-// MULTIPLAYER.JS : GESTION DES REMATCHS EN LIGNE
+// MULTIPLAYER.JS : MODE MULTIJOUEUR EN LIGNE (SANS POUVOIRS)
 // ========================================================
 
 const MultiplayerManager = {
@@ -9,8 +9,6 @@ const MultiplayerManager = {
     isHost: false,
     hostDeckReady: false,
     guestDeckReady: false,
-
-    init() {},
 
     creerDuel() {
         this.isHost = true;
@@ -23,19 +21,19 @@ const MultiplayerManager = {
         let codeDisplay = document.getElementById('displayRoomCode');
         if (codeDisplay) codeDisplay.innerText = this.roomCode;
         
-        const modal = new bootstrap.Modal(document.getElementById('multiWaitingModal'));
-        modal.show();
+        const modalEl = document.getElementById('multiWaitingModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
 
         this.peer = new Peer('brawltasks-' + this.roomCode);
-
-        this.peer.on('open', (id) => {
-            console.log("Salon P2P créé avec ID: " + id);
-        });
 
         this.peer.on('connection', (conn) => {
             this.connection = conn;
             this.configurerConnexion();
-            modal.hide();
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
             lancerConfigurationDeck('multi');
         });
     },
@@ -81,18 +79,8 @@ const MultiplayerManager = {
 
     verifierLancementMatchSiPret() {
         if (this.isHost && this.hostDeckReady && this.guestDeckReady) {
-            const pHost = LISTE_POUVOIRS[Math.floor(Math.random() * LISTE_POUVOIRS.length)];
-            const pGuest = LISTE_POUVOIRS[Math.floor(Math.random() * LISTE_POUVOIRS.length)];
-
-            this.envoyerAction({
-                type: 'START_SLOT_MACHINE',
-                pouvoirHost: pHost,
-                pouvoirGuest: pGuest
-            });
-
-            PouvoirManager.lancerSlotMachineSynchro(pHost, pGuest, () => {
-                demarrerInterfaceCombat();
-            });
+            this.envoyerAction({ type: 'START_MATCH' });
+            demarrerInterfaceCombat();
         }
     },
 
@@ -115,53 +103,30 @@ const MultiplayerManager = {
             this.guestDeckReady = true;
             this.verifierLancementMatchSiPret();
         } 
-        else if (data.type === 'START_SLOT_MACHINE') {
+        else if (data.type === 'START_MATCH') {
             if (rewardModalInst) rewardModalInst.hide();
-            PouvoirManager.lancerSlotMachineSynchro(data.pouvoirGuest, data.pouvoirHost, () => {
-                demarrerInterfaceCombat();
-            });
+            demarrerInterfaceCombat();
         }
         else if (data.type === 'DEMANDE_REMATCH') {
-            rematchModalInst.show();
+            if (rematchModalInst) rematchModalInst.show();
         }
         else if (data.type === 'REMATCH_ACCEPTE') {
             if (rewardModalInst) rewardModalInst.hide();
             validerMonDeck();
         }
         else if (data.type === 'COUP_JOUE') {
-            jouerCoupLocal(data.actionType, data.dmg, data.element, true);
-        }
-        else if (data.type === 'POUVOIR_ACTIVATION') {
-            localMatch.pouvoirJ2Utilise = true;
-            
-            if (data.pid === 'a_lagonie') {
-                localMatch.aLagonieCardIndexJ2 = localMatch.indexJ2;
-            } else if (data.pid === 'outre_tombe') {
-                localMatch.outreTombeJ2Declenche = true;
-                localMatch.maxHpDeckJ2 = localMatch.maxHpDeckJ2.map(hp => Math.round(hp * 0.75));
-                localMatch.currentHpDeckJ2 = localMatch.currentHpDeckJ2.map((hp, i) => hp <= 0 ? localMatch.maxHpDeckJ2[i] : Math.round(hp * 0.75));
-                localMatch.hpJ2 = localMatch.currentHpDeckJ2[localMatch.indexJ2];
-            } else if (data.pid === 'soins') {
-                let limit = localMatch.maxHpDeckJ2[localMatch.indexJ2];
-                localMatch.hpJ2 = Math.min(limit, localMatch.hpJ2 + Math.round(limit * 0.5));
-            } else if (data.pid === 'dernier_souffle') {
-                localMatch.toursDernierSouffleJ2 = 2;
-                localMatch.maxHpDeckJ2[localMatch.indexJ2] = Math.round(localMatch.maxHpDeckJ2[localMatch.indexJ2] * 1.25);
-                localMatch.hpJ2 = Math.round(localMatch.hpJ2 * 1.25);
-            } else if (data.pid === 'vif_dor' || data.pid === 'esquive_block') {
-                localMatch.esquivePreequipeeJ2 = true;
-            }
-
-            let logBox = document.getElementById('combatLog');
-            if (logBox) logBox.innerText = `⚡ ${localMatch.enemyName} active son pouvoir : ${data.nomPouvoir} !`;
-            synchroniserVisuelsLocaux(false);
+            jouerCoupLocal(data.actionType, data.dmg, data.element, true, data.reussiteEsquive);
         }
     }
 };
 
 function repondreRematch(accepte) {
-    let modal = bootstrap.Modal.getInstance(document.getElementById('rematchRequestModal'));
-    modal.hide();
+    let modalEl = document.getElementById('rematchRequestModal');
+    if (modalEl) {
+        let modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+    }
+    
     if (accepte) {
         MultiplayerManager.envoyerAction({ type: 'REMATCH_ACCEPTE' });
         if (rewardModalInst) rewardModalInst.hide();
