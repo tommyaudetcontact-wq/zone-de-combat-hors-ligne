@@ -150,10 +150,13 @@
 <body>
 
     <div id="nonBattleInterface" class="container py-3">
-        <div id="headerBar" class="d-flex justify-content-between align-items-center mb-3 d-none">
-            <div><h2 class="brawl-font text-warning mb-0" id="displayUsername">JOUEUR</h2></div>
-            <button onclick="window.location.href='https://tommyaudetcontact-wq.github.io/brawlTasks2.0/'" class="btn brawl-btn btn-pink px-4 py-2">⬅ QUITTER</button>        
-        </div>
+ <div id="headerBar" class="d-flex justify-content-between align-items-center mb-3 d-none">
+    <div><h2 class="brawl-font text-warning mb-0" id="displayUsername">JOUEUR</h2></div>
+    <div class="d-flex gap-2">
+        <button onclick="handleLogout()" class="btn brawl-btn btn-pink px-3 py-2">🚪 DÉCONNEXION</button>
+        <button onclick="window.location.href='https://tommyaudetcontact-wq.github.io/brawlTasks2.0/'" class="btn brawl-btn btn-pink px-4 py-2">⬅ QUITTER</button>
+    </div>
+</div>
 
         <div id="loginPage" class="login-container p-5 text-center">
             <h1 class="brawl-font text-info mb-4" style="font-size: 3rem;">ARÈNE BOT</h1>
