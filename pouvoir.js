@@ -1,5 +1,5 @@
 // ========================================================
-// POUVOIR.JS : SYSTEME DE POUVOIRS ET STRATÉGIES CORRIGÉ
+// POUVOIR.JS : SYSTEME DE POUVOIRS INDÉPENDANTS ET CORRIGÉS
 // ========================================================
 
 const LISTE_POUVOIRS = [
@@ -18,7 +18,8 @@ const PouvoirManager = {
     slotModalInst: null,
     callbackAttente: null,
 
-    declencherTirageSlotMachine(callbackFin) {
+    // TIRE UN POUVOIR SPÉCIFIQUE POUR CHAQUE JOUEUR
+    lancerSlotMachineSynchro(pMonPouvoir, pAdversaire, callbackFin) {
         if(!this.slotModalInst) {
             this.slotModalInst = new bootstrap.Modal(document.getElementById('slotMachineModal'));
         }
@@ -30,39 +31,46 @@ const PouvoirManager = {
         btnGo.classList.add('d-none');
         sPlayer.classList.add('slot-rolling');
         sBot.classList.add('slot-rolling');
-        sDesc.innerText = "Tirage des super-pouvoirs...";
+        sDesc.innerText = "Tirage des pouvoirs au hasard...";
         this.slotModalInst.show();
+
+        localMatch.pouvoirJ1 = pMonPouvoir;
+        localMatch.pouvoirJ2 = pAdversaire;
+        this.initialiserPouvoirsMatch();
 
         let count = 0;
         let interval = setInterval(() => {
             sPlayer.innerText = LISTE_POUVOIRS[Math.floor(Math.random() * LISTE_POUVOIRS.length)].nom;
             sBot.innerText = LISTE_POUVOIRS[Math.floor(Math.random() * LISTE_POUVOIRS.length)].nom;
             count++;
+            
             if(count > 15) {
                 clearInterval(interval);
-                const p1 = LISTE_POUVOIRS[Math.floor(Math.random() * LISTE_POUVOIRS.length)];
-                const p2 = LISTE_POUVOIRS[Math.floor(Math.random() * LISTE_POUVOIRS.length)];
-                
-                localMatch.pouvoirJ1 = p1;
-                localMatch.pouvoirJ2 = p2;
                 
                 sPlayer.classList.remove('slot-rolling');
                 sBot.classList.remove('slot-rolling');
                 
-                sPlayer.innerText = p1.nom;
-                sBot.innerText = p2.nom;
-                sDesc.innerHTML = `<span class="text-success">Toi: ${p1.desc}</span><br><span class="text-white">Bot: ${p2.desc}</span>`;
+                sPlayer.innerText = pMonPouvoir.nom;
+                sBot.innerText = pAdversaire.nom;
+                sDesc.innerHTML = `<span class="text-success fw-bold">TON POUVOIR : ${pMonPouvoir.nom.toUpperCase()}</span><br><span class="text-danger fw-bold">ADVERSAIRE : ${pAdversaire.nom.toUpperCase()}</span>`;
                 
                 btnGo.classList.remove('d-none');
-                this.initialiserPouvoirsMatch();
                 this.callbackAttente = callbackFin;
             }
         }, 100);
     },
 
+    declencherTirageSlotMachine(callbackFin) {
+        const p1 = LISTE_POUVOIRS[Math.floor(Math.random() * LISTE_POUVOIRS.length)];
+        const p2 = LISTE_POUVOIRS[Math.floor(Math.random() * LISTE_POUVOIRS.length)];
+        this.lancerSlotMachineSynchro(p1, p2, callbackFin);
+    },
+
     initialiserPouvoirsMatch() {
-        localMatch.pouvoirJ1Utilise = false; localMatch.pouvoirJ2Utilise = false;
-        localMatch.toursDernierSouffleJ1 = 0; localMatch.toursDernierSouffleJ2 = 0;
+        localMatch.pouvoirJ1Utilise = false; 
+        localMatch.pouvoirJ2Utilise = false;
+        localMatch.toursDernierSouffleJ1 = 0; 
+        localMatch.toursDernierSouffleJ2 = 0;
         
         localMatch.aLagonieCardIndexJ1 = -1;
         localMatch.aLagonieCardIndexJ2 = -1;
@@ -72,11 +80,16 @@ const PouvoirManager = {
         localMatch.esquiveReussiCeTourJ1 = false;
         localMatch.esquiveReussiCeTourJ2 = false;
 
-        localMatch.outreTombeJ1Declenche = false; localMatch.outreTombeJ2Declenche = false;
-        localMatch.megaAttaqueMalusJ1 = false; localMatch.megaAttaqueMalusJ2 = false;
-        localMatch.skipNextTurnJ1 = false; localMatch.skipNextTurnJ2 = false;
-        localMatch.rafaleEnCoursJ1 = false; localMatch.rafaleEnCoursJ2 = false;
-        localMatch.toursPouvoirBloqueBot = 0; localMatch.toursPouvoirBloqueJoueur = 0;
+        localMatch.outreTombeJ1Declenche = false; 
+        localMatch.outreTombeJ2Declenche = false;
+        localMatch.megaAttaqueMalusJ1 = false; 
+        localMatch.megaAttaqueMalusJ2 = false;
+        localMatch.skipNextTurnJ1 = false; 
+        localMatch.skipNextTurnJ2 = false;
+        localMatch.rafaleEnCoursJ1 = false; 
+        localMatch.rafaleEnCoursJ2 = false;
+        localMatch.toursPouvoirBloqueBot = 0; 
+        localMatch.toursPouvoirBloqueJoueur = 0;
     },
 
     fermerSlotEtLancerCombat() {
@@ -85,7 +98,7 @@ const PouvoirManager = {
     },
 
     ajusterDegats(degats, estJ1) {
-        let val = degats;
+        let val = parseInt(degats) || 0;
         if (estJ1) {
             if (localMatch.toursDernierSouffleJ1 > 0) val = Math.round(val * 1.25);
             if (localMatch.aLagonieCardIndexJ1 === localMatch.indexJ1) val = Math.round(val * 0.75);
@@ -109,7 +122,7 @@ const PouvoirManager = {
         let futurHp = localMatch.hpJ1 - degats;
         if (futurHp <= 0 && localMatch.aLagonieCardIndexJ1 === localMatch.indexJ1 && localMatch.hpJ1 > 1) {
             localMatch.hpJ1 = 1;
-            logBox.innerText = "🩹 À l'agonie ! Cette carte survit et reste bloquée à 1 PV !";
+            if (logBox) logBox.innerText = "🩹 À l'agonie ! Cette carte survit et reste bloquée à 1 PV !";
             return false;
         }
         localMatch.hpJ1 = futurHp;
@@ -121,15 +134,17 @@ const PouvoirManager = {
         let futurHp = localMatch.hpJ2 - degats;
         if (futurHp <= 0 && localMatch.aLagonieCardIndexJ2 === localMatch.indexJ2 && localMatch.hpJ2 > 1) {
             localMatch.hpJ2 = 1;
-            logBox.innerText = "🤖 À l'agonie ! Le Bot survit et reste bloqué à 1 PV !";
+            if (logBox) logBox.innerText = "🤖 À l'agonie ! L'adversaire survit et reste bloqué à 1 PV !";
             return false;
         }
         localMatch.hpJ2 = futurHp;
         return localMatch.hpJ2 <= 0;
     },
 
+    // ACTIVATION MANUELLE SANS DÉCLENCHER LE BANDEAU DE TOUR PAR ERREUR
     activerPouvoirManuel() {
-        if(localMatch.tourA !== "J1" || localMatch.pouvoirJ1Utilise || !localMatch.pouvoirJ1) return;
+        let isMyTurn = (localMatch.tourA === localMatch.myRole);
+        if(!isMyTurn || localMatch.pouvoirJ1Utilise || !localMatch.pouvoirJ1) return;
         if(localMatch.toursPouvoirBloqueJoueur > 0) {
             alert("Ton pouvoir est bloqué ce tour-ci !");
             return;
@@ -142,27 +157,23 @@ const PouvoirManager = {
             localMatch.pouvoirJ1Utilise = true; localMatch.toursDernierSouffleJ1 = 2;
             localMatch.maxHpDeckJ1[localMatch.indexJ1] = Math.round(localMatch.maxHpDeckJ1[localMatch.indexJ1] * 1.25);
             localMatch.hpJ1 = Math.round(localMatch.hpJ1 * 1.25);
-            logBox.innerText = "💥 Pouvoir activé : +25% PV et ATQ (2 tours) !";
-            synchroniserVisuelsLocaux();
+            if (logBox) logBox.innerText = "💥 Pouvoir activé : +25% PV et ATQ (2 tours) !";
         }
         else if(pid === "vif_dor" || pid === "esquive_block") {
             localMatch.pouvoirJ1Utilise = true;
             localMatch.esquivePreequipeeJ1 = true;
-            logBox.innerText = "⚡ POUVOIR ESQUIVE ACTIVÉ ! Prêt à renvoyer la prochaine attaque de l'adversaire (75% de chance) !";
-            synchroniserVisuelsLocaux();
+            if (logBox) logBox.innerText = "⚡ POUVOIR ESQUIVE ACTIVÉ ! Prêt à renvoyer la prochaine attaque de l'adversaire (75% de chance) !";
         }
         else if(pid === "a_lagonie") {
             localMatch.pouvoirJ1Utilise = true; 
             localMatch.aLagonieCardIndexJ1 = localMatch.indexJ1;
-            logBox.innerText = "🩹 Pouvoir activé : Survie à 1 PV assurée pour cette carte (-25% ATQ) !";
-            synchroniserVisuelsLocaux();
+            if (logBox) logBox.innerText = "🩹 Pouvoir activé : Survie à 1 PV assurée pour cette carte (-25% ATQ) !";
         }
         else if(pid === "soins") {
             let limit = localMatch.maxHpDeckJ1[localMatch.indexJ1];
             localMatch.hpJ1 = Math.min(limit, localMatch.hpJ1 + Math.round(limit * 0.5));
             localMatch.pouvoirJ1Utilise = true;
-            logBox.innerText = "✨ Pouvoir utilisé : 50% de tes PV soignés !";
-            synchroniserVisuelsLocaux();
+            if (logBox) logBox.innerText = "✨ Pouvoir utilisé : 50% de tes PV soignés !";
         } 
         else if(pid === "switch") {
             let mI = localMatch.indexJ1; let sI = localMatch.indexJ2;
@@ -170,8 +181,7 @@ const PouvoirManager = {
             let tMx = localMatch.maxHpDeckJ1[mI]; localMatch.maxHpDeckJ1[mI] = localMatch.maxHpDeckJ2[sI]; localMatch.maxHpDeckJ2[sI] = tMx;
             let tCd = localMatch.deckJ1[mI]; localMatch.deckJ1[mI] = localMatch.deckJ2[sI]; localMatch.deckJ2[sI] = tCd;
             localMatch.pouvoirJ1Utilise = true;
-            logBox.innerText = "🔄 Pouvoir utilisé : Interversion des combattants !";
-            synchroniserVisuelsLocaux();
+            if (logBox) logBox.innerText = "🔄 Pouvoir utilisé : Interversion des combattants !";
         }
         else if(pid === "outre_tombe") {
             let indexMort = localMatch.currentHpDeckJ1.findIndex(hp => hp <= 0);
@@ -181,16 +191,16 @@ const PouvoirManager = {
                 localMatch.maxHpDeckJ1 = localMatch.maxHpDeckJ1.map(hp => Math.round(hp * 0.75));
                 localMatch.currentHpDeckJ1 = localMatch.currentHpDeckJ1.map((hp, i) => hp <= 0 ? localMatch.maxHpDeckJ1[i] : Math.round(hp * 0.75));
                 localMatch.hpJ1 = localMatch.currentHpDeckJ1[localMatch.indexJ1];
-                logBox.innerText = "💀 Pouvoir utilisé : Carte réanimée ! (-25% PV et Attaque globale)";
-                synchroniserVisuelsLocaux();
-            } else { alert("Aucune carte n'est KO !"); }
+                if (logBox) logBox.innerText = "💀 Pouvoir utilisé : Carte réanimée ! (-25% PV et Attaque globale)";
+            } else { alert("Aucune carte n'est KO !"); return; }
         }
         else if(pid === "en_rafale") {
             localMatch.pouvoirJ1Utilise = true;
             localMatch.skipNextTurnJ1 = true;
             localMatch.rafaleEnCoursJ1 = true;
-            logBox.innerText = "💥 POUVOIR EN RAFALE ! Première frappe...";
+            if (logBox) logBox.innerText = "💥 POUVOIR EN RAFALE ! Première frappe...";
             preparerAttaque();
+            return;
         }
         else if(pid === "mega_attaque") {
             localMatch.pouvoirJ1Utilise = true;
@@ -205,9 +215,12 @@ const PouvoirManager = {
             let dmgColossal = Math.round(dmgBase * 1.5);
             dmgColossal = this.ajusterDegats(dmgColossal, true);
 
-            logBox.innerText = "⚡ MÉGA ATTAQUE DÉCHAÎNÉE (+50% DÉGÂTS) !";
+            if (logBox) logBox.innerText = "⚡ MÉGA ATTAQUE DÉCHAÎNÉE (+50% DÉGÂTS) !";
             jouerCoupLocal('attaque', dmgColossal, 'eclair');
+            return;
         }
+
+        synchroniserVisuelsLocaux(false); // Pas d'animation de bandeau
     },
 
     analyserEtExecuterPouvoirBot() {
@@ -220,24 +233,24 @@ const PouvoirManager = {
             localMatch.pouvoirJ2Utilise = true; localMatch.toursDernierSouffleJ2 = 2;
             localMatch.maxHpDeckJ2[localMatch.indexJ2] = Math.round(localMatch.maxHpDeckJ2[localMatch.indexJ2] * 1.25);
             localMatch.hpJ2 = Math.round(localMatch.hpJ2 * 1.25);
-            logBox.innerText = "🤖 Le Bot active : DERNIER SOUFFLE ! (+25% PV/ATQ)";
+            if (logBox) logBox.innerText = "🤖 Le Bot active : DERNIER SOUFFLE ! (+25% PV/ATQ)";
         }
         else if (pid === "vif_dor" || pid === "esquive_block") {
             if (localMatch.hpJ2 <= 18) {
                 localMatch.pouvoirJ2Utilise = true;
                 localMatch.esquivePreequipeeJ2 = true;
-                logBox.innerText = "🤖 Le Bot active son POUVOIR ESQUIVE !";
+                if (logBox) logBox.innerText = "🤖 Le Bot active son POUVOIR ESQUIVE !";
             }
         }
         else if (pid === "a_lagonie" && localMatch.hpJ2 <= 8) {
             localMatch.pouvoirJ2Utilise = true; 
             localMatch.aLagonieCardIndexJ2 = localMatch.indexJ2;
-            logBox.innerText = "🤖 Le Bot active : À L'AGONIE !";
+            if (logBox) logBox.innerText = "🤖 Le Bot active : À L'AGONIE !";
         }
         else if (pid === "soins" && localMatch.hpJ2 <= (maxBot * 0.5)) {
             localMatch.hpJ2 = Math.min(maxBot, localMatch.hpJ2 + Math.round(maxBot * 0.5));
             localMatch.pouvoirJ2Utilise = true;
-            logBox.innerText = "✨ Le Bot utilise : SOINS ! (+50% PV)";
+            if (logBox) logBox.innerText = "✨ Le Bot utilise : SOINS ! (+50% PV)";
         }
         else if (pid === "switch" && localMatch.hpJ2 < 8 && localMatch.hpJ1 > 16) {
             let mI = localMatch.indexJ1; let sI = localMatch.indexJ2;
@@ -245,7 +258,7 @@ const PouvoirManager = {
             let tMx = localMatch.maxHpDeckJ1[mI]; localMatch.maxHpDeckJ1[mI] = localMatch.maxHpDeckJ2[sI]; localMatch.maxHpDeckJ2[sI] = tMx;
             let tCd = localMatch.deckJ1[mI]; localMatch.deckJ1[mI] = localMatch.deckJ2[sI]; localMatch.deckJ2[sI] = tCd;
             localMatch.pouvoirJ2Utilise = true;
-            logBox.innerText = "🔄 Le Bot utilise : SWITCH !";
+            if (logBox) logBox.innerText = "🔄 Le Bot utilise : SWITCH !";
         }
         else if (pid === "outre_tombe" && localMatch.currentHpDeckJ2.some(hp => hp <= 0)) {
             localMatch.pouvoirJ2Utilise = true;
@@ -253,7 +266,7 @@ const PouvoirManager = {
             localMatch.maxHpDeckJ2 = localMatch.maxHpDeckJ2.map(hp => Math.round(hp * 0.75));
             localMatch.currentHpDeckJ2 = localMatch.currentHpDeckJ2.map((hp, i) => hp <= 0 ? localMatch.maxHpDeckJ2[i] : Math.round(hp * 0.75));
             localMatch.hpJ2 = localMatch.currentHpDeckJ2[localMatch.indexJ2];
-            logBox.innerText = "💀 Le Bot utilise : OUTRE TOMBE !";
+            if (logBox) logBox.innerText = "💀 Le Bot utilise : OUTRE TOMBE !";
         }
         else if (pid === "en_rafale" && localMatch.hpJ1 >= 15) {
             localMatch.pouvoirJ2Utilise = true;
@@ -269,19 +282,18 @@ const PouvoirManager = {
             let dmgBase = Math.floor(Math.random() * 12) + 10 + botAtqBonus;
             let dmgColossal = Math.round(dmgBase * 1.5);
             dmgColossal = this.ajusterDegats(dmgColossal, false);
-            logBox.innerText = "🤖 LE BOT DÉCHAÎNE UNE MÉGA ATTAQUE (+50%) !";
+            if (logBox) logBox.innerText = "🤖 LE BOT DÉCHAÎNE UNE MÉGA ATTAQUE (+50%) !";
             jouerCoupLocal('attaque', dmgColossal, 'eclair');
         }
     },
 
     decrementerTours() {
-        if(localMatch.tourA === "J1") {
+        if(localMatch.tourA === "host" && localMatch.myRole === "host") {
             if (localMatch.toursDernierSouffleJ1 > 0) localMatch.toursDernierSouffleJ1--;
             if (localMatch.toursPouvoirBloqueJoueur > 0) localMatch.toursPouvoirBloqueJoueur--;
-        }
-        if(localMatch.tourA === "J2") {
-            if (localMatch.toursDernierSouffleJ2 > 0) localMatch.toursDernierSouffleJ2--;
-            if (localMatch.toursPouvoirBloqueBot > 0) localMatch.toursPouvoirBloqueBot--;
+        } else if (localMatch.tourA === "guest" && localMatch.myRole === "guest") {
+            if (localMatch.toursDernierSouffleJ1 > 0) localMatch.toursDernierSouffleJ1--;
+            if (localMatch.toursPouvoirBloqueJoueur > 0) localMatch.toursPouvoirBloqueJoueur--;
         }
     }
 };
