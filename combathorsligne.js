@@ -367,7 +367,7 @@ function decisionBot() {
     }
 }
 
-// GESTION DES ATTAQUES ET DÉTECTION DES ESQUIVES (CLASSIQUE ET POUVOIR)
+// GESTION DES ATTAQUES ET DES ESQUIVES : RENVOI UNIQUE OU DOUBLE SI ATTAQUE EN RAFALE
 function jouerCoupLocal(type, dmg = 0, element = "") {
     document.getElementById('btnAttaque').disabled = true; 
     document.getElementById('btnEsquive').disabled = true;
@@ -377,50 +377,57 @@ function jouerCoupLocal(type, dmg = 0, element = "") {
 
     if (type === 'attaque') {
         let esquivePreequipee = animDepuisMoi ? localMatch.esquivePreequipeeJ2 : localMatch.esquivePreequipeeJ1;
-        let esquiveApresReussite = animDepuisMoi ? localMatch.esquiveReussiCeTourJ2 : localMatch.esquiveReussiCeTourJ1;
+        let esquiveRafaleActive = animDepuisMoi ? localMatch.esquiveReussiCeTourJ2 : localMatch.esquiveReussiCeTourJ1;
         let esquiveClassiqueActive = animDepuisMoi ? localMatch.esquiveJ2Active : localMatch.esquiveJ1Active;
+        let attaquantEstEnRafale = animDepuisMoi ? localMatch.rafaleEnCoursJ1 : localMatch.rafaleEnCoursJ2;
 
-        if (esquivePreequipee || esquiveApresReussite) {
+        if (esquivePreequipee || esquiveRafaleActive || esquiveClassiqueActive) {
             let reussite = false;
 
-            if (esquiveApresReussite) {
-                // Si le 1er coup en rafale a rebondi, le 2ème coup de la rafale rebondit aussi automatiquement !
+            if (esquiveRafaleActive) {
+                // Si le 1er coup d'une RAFALE a déjà été renvoyé, le 2ème coup de la rafale rebondit aussi automatiquement !
                 reussite = true;
-            } else {
+            } else if (esquiveClassiqueActive) {
+                // Esquive classique (1/3) réussie
+                if (animDepuisMoi) localMatch.esquiveJ2Active = false;
+                else localMatch.esquiveJ1Active = false;
+                reussite = true;
+            } else if (esquivePreequipee) {
+                // Pouvoir Esquive / Vif d'or (75%)
                 if (animDepuisMoi) localMatch.esquivePreequipeeJ2 = false;
                 else localMatch.esquivePreequipeeJ1 = false;
 
-                reussite = Math.random() < 0.75; // 75% de réussite
-                if (reussite) {
-                    if (animDepuisMoi) localMatch.esquiveReussiCeTourJ2 = true;
-                    else localMatch.esquiveReussiCeTourJ1 = true;
-                }
+                reussite = Math.random() < 0.75;
             }
 
             if (reussite) {
                 contreAttaqueReussie = true;
+                
+                // On active la prolongation de l'esquive UNIQUEMENT SI l'attaquant utilise une RAFALE
+                if (attaquantEstEnRafale) {
+                    if (animDepuisMoi) localMatch.esquiveReussiCeTourJ2 = true;
+                    else localMatch.esquiveReussiCeTourJ1 = true;
+                }
+
+                // L'attaquant subit sa propre attaque (Rebond Boomerang)
                 executerImpactFin(animDepuisMoi, dmg);
-                logCoup = `⚡ ESQUIVE RÉUSSIE (75%) ! ${animDepuisMoi ? "Le Bot" : "Tu as"} renvoyé l'attaque ! ${animDepuisMoi ? currentUser : "Le Bot"} subit ${dmg} dégâts !`;
+                logCoup = `⚡ ESQUIVE RÉUSSIE ! ${animDepuisMoi ? "Le Bot" : "Tu as"} renvoyé l'attaque ! ${animDepuisMoi ? currentUser : "Le Bot"} subit ${dmg} dégâts !`;
             } else {
+                // Échec de l'esquive : le défenseur subit les dégâts ET son prochain tour sera sauté
                 executerImpactFin(!animDepuisMoi, dmg);
                 if (animDepuisMoi) localMatch.skipNextTurnJ2 = true;
                 else localMatch.skipNextTurnJ1 = true;
                 logCoup = `❌ ESQUIVE ÉCHOUÉE ! ${animDepuisMoi ? "Le Bot" : "Tu"} subis ${dmg} dégâts et le prochain tour sera sauté !`;
             }
-        } else if (esquiveClassiqueActive) {
-            if (animDepuisMoi) localMatch.esquiveJ2Active = false;
-            else localMatch.esquiveJ1Active = false;
-
-            contreAttaqueReussie = true;
-            executerImpactFin(animDepuisMoi, dmg);
-            logCoup = `🛡️ ESQUIVE PARFAITE ! ${animDepuisMoi ? "Le Bot" : "Tu as"} esquivé l'attaque ! ${animDepuisMoi ? currentUser : "Le Bot"} subit ${dmg} dégâts !`;
         } else {
+            // Attaque normale sans esquive
             logCoup = `${animDepuisMoi ? currentUser : "Le Bot"} lance une attaque [${element.toUpperCase()}] : ${dmg} dégâts !`;
             executerImpactFin(!animDepuisMoi, dmg);
         }
         
         lancerAnimationFX(animDepuisMoi, element, contreAttaqueReussie, logCoup, contreAttaqueReussie);
     } else {
+        // Bouton "Esquive 🛡️" classique
         let chance = PouvoirManager.obtenirChanceEsquive(animDepuisMoi);
         let reussiteEsquive = (Math.random() < chance);
         
@@ -492,6 +499,7 @@ function finaliserTour(logTexte, etaitUnContre = false) {
         return;
     }
 
+    // Réinitialise le statut d'esquive de rafale une fois tout le tour terminé
     localMatch.esquiveReussiCeTourJ1 = false;
     localMatch.esquiveReussiCeTourJ2 = false;
 
